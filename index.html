@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Holopet · mascota holográfica</title>
+<meta name="description" content="Prototipo de mascota holográfica inteligente en un pedestal de escritorio. Un solo archivo, sin backend.">
+<style>
+/* ============================================================
+   ESTILOS · interfaz oscura tipo "sala con un holograma encendido"
+   ============================================================ */
+:root{
+  --acento:#4df2ff;                 /* color de la mascota; lo cambia el JS */
+  --fondo:#05070d;
+  --panel:rgba(10,14,24,.72);
+  --borde:rgba(255,255,255,.08);
+  --texto:#e6eef7;
+  --texto-suave:#8e9bb0;
+  --fuente:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--fondo);color:var(--texto);font-family:var(--fuente);overflow:hidden}
+#escena{position:fixed;inset:0;display:block;touch-action:none}
+
+/* Cabecera flotante */
+#top{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:12px;padding:12px 16px;pointer-events:none;z-index:5}
+#top>*{pointer-events:auto}
+.marca{font-weight:700;letter-spacing:.14em;font-size:12px;color:var(--texto-suave)}
+.marca b{color:var(--acento)}
+#chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--borde);background:var(--panel);backdrop-filter:blur(8px);color:var(--texto-suave)}
+.chip b{color:var(--texto);font-weight:600}
+#top .espacio{flex:1}
+.btn{appearance:none;border:1px solid var(--borde);background:var(--panel);color:var(--texto);border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:border-color .15s,transform .1s}
+.btn:hover{border-color:var(--acento)}
+.btn:active{transform:scale(.97)}
+.btn.activo{border-color:var(--acento);box-shadow:0 0 0 1px var(--acento) inset,0 0 18px color-mix(in srgb,var(--acento) 40%,transparent)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Panel lateral: estados + chat + acciones */
+#panel{position:fixed;top:64px;right:16px;bottom:16px;width:360px;display:flex;flex-direction:column;gap:10px;background:var(--panel);border:1px solid var(--borde);border-radius:16px;padding:14px;backdrop-filter:blur(14px);z-index:4}
+#estados{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.estado{font-size:11px;color:var(--texto-suave)}
+.estado span{display:flex;justify-content:space-between;margin-bottom:4px}
+.barra{height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.barra i{display:block;height:100%;width:50%;border-radius:999px;background:var(--acento);transition:width .6s ease}
+.barra.carino i{background:#ff6b9a}
+.barra.curiosidad i{background:#ffd166}
+#chat{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px;scrollbar-width:thin}
+.msg{max-width:88%;padding:8px 11px;border-radius:12px;font-size:13.5px;line-height:1.35;white-space:pre-wrap;word-wrap:break-word}
+.msg.pet{align-self:flex-start;background:color-mix(in srgb,var(--acento) 14%,transparent);border:1px solid color-mix(in srgb,var(--acento) 35%,transparent);border-bottom-left-radius:4px}
+.msg.user{align-self:flex-end;background:rgba(255,255,255,.08);border:1px solid var(--borde);border-bottom-right-radius:4px}
+.msg.sys{align-self:center;font-size:11.5px;color:var(--texto-suave);background:transparent;border:1px dashed var(--borde);max-width:100%}
+#entrada{display:flex;gap:6px}
+#entrada input{flex:1;min-width:0;background:rgba(255,255,255,.06);border:1px solid var(--borde);border-radius:10px;color:var(--texto);padding:10px 12px;font:inherit;font-size:14px;outline:none}
+#entrada input:focus{border-color:var(--acento)}
+#acciones{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+#acciones .btn{padding:9px 4px;font-size:12.5px;display:flex;flex-direction:column;align-items:center;gap:2px}
+#acciones .btn em{font-style:normal;font-size:16px}
+.fila-opciones{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--texto-suave)}
+.fila-opciones label{display:flex;align-items:center;gap:5px;cursor:pointer}
+
+/* Burbuja de diálogo sobre la cabeza de la mascota */
+#burbuja{position:fixed;left:0;top:0;transform:translate(-50%,-100%);max-width:270px;background:rgba(8,12,20,.85);border:1px solid var(--acento);color:var(--texto);padding:9px 12px;border-radius:14px;font-size:14px;line-height:1.35;pointer-events:none;opacity:0;transition:opacity .25s;z-index:3;box-shadow:0 0 24px color-mix(in srgb,var(--acento) 35%,transparent)}
+#burbuja.visible{opacity:1}
+#burbuja::after{content:"";position:absolute;left:50%;bottom:-7px;width:12px;height:12px;background:inherit;border-right:1px solid var(--acento);border-bottom:1px solid var(--acento);transform:translateX(-50%) rotate(45deg)}
+
+/* Pista sobre la zona de interacción */
+#pista{position:fixed;left:16px;bottom:16px;font-size:12px;color:var(--texto-suave);background:var(--panel);border:1px solid var(--borde);border-radius:10px;padding:8px 12px;backdrop-filter:blur(8px);z-index:3;max-width:min(420px,calc(100vw - 420px))}
+
+/* Diálogos (ayuda, versión física, fiesta) */
+dialog{border:1px solid var(--borde);background:#0b0f19;color:var(--texto);border-radius:18px;padding:0;max-width:min(860px,94vw);max-height:88vh;width:100%}
+dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}
+.dlg-cab{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--borde);position:sticky;top:0;background:#0b0f19;z-index:1}
+.dlg-cab h2{margin:0;font-size:17px}
+.dlg-cuerpo{padding:18px 22px 26px;overflow:auto;max-height:calc(88vh - 62px);font-size:14px;line-height:1.5}
+.dlg-cuerpo h3{margin:22px 0 8px;font-size:15px;color:var(--acento)}
+.dlg-cuerpo h3:first-child{margin-top:0}
+.dlg-cuerpo table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0 14px}
+.dlg-cuerpo th,.dlg-cuerpo td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--borde)}
+.dlg-cuerpo th{color:var(--texto-suave);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.dlg-cuerpo code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;font-size:12.5px}
+.dlg-cuerpo ul{padding-left:20px;margin:6px 0}
+.dlg-cuerpo li{margin:3px 0}
+.nota{border-left:3px solid var(--acento);padding:8px 12px;background:color-mix(in srgb,var(--acento) 8%,transparent);border-radius:0 10px 10px 0;margin:10px 0}
+.opciones-fiesta{display:grid;gap:10px}
+.opciones-fiesta .btn{text-align:left;padding:14px}
+.opciones-fiesta small{display:block;color:var(--texto-suave);margin-top:4px}
+
+/* Móvil: el panel pasa a ser una hoja inferior */
+@media (max-width:820px){
+  #panel{top:auto;left:8px;right:8px;bottom:8px;width:auto;height:46vh;padding:10px}
+  #pista{display:none}
+  #top{flex-wrap:wrap;gap:6px;padding:8px}
+  .marca{display:none}
+  #burbuja{max-width:220px;font-size:13px}
+}
+</style>
+</head>
+<body>
+
+<canvas id="escena"></canvas>
+
+<!-- Cabecera -->
+<header id="top">
+  <div class="marca">HOLO<b>PET</b> · prototipo</div>
+  <div id="chips">
+    <span class="chip">🐾 <b id="chip-nombre">Pixel</b></span>
+    <span class="chip">especie <b id="chip-especie">zorro</b></span>
+    <span class="chip">etapa <b id="chip-etapa">cría</b></span>
+    <span class="chip">ánimo <b id="chip-animo">normal</b></span>
+    <span class="chip">🕒 <b id="chip-franja">tarde</b></span>
+  </div>
+  <div class="espacio"></div>
+  <button class="btn" id="btn-fiesta" title="Modo fiesta: baila al ritmo de la música">🎉 Fiesta</button>
+  <button class="btn" id="btn-fisica" title="Especificación de hardware">🔧 Versión física</button>
+  <button class="btn" id="btn-ayuda" title="Comandos y limitaciones">❓ Ayuda</button>
+</header>
+
+<!-- Panel de interacción -->
+<aside id="panel">
+  <div id="estados">
+    <div class="estado"><span>⚡ Energía <b id="val-energia">—</b></span><div class="barra energia"><i id="bar-energia"></i></div></div>
+    <div class="estado"><span>💗 Cariño <b id="val-carino">—</b></span><div class="barra carino"><i id="bar-carino"></i></div></div>
+    <div class="estado"><span>👀 Curiosidad <b id="val-curiosidad">—</b></span><div class="barra curiosidad"><i id="bar-curiosidad"></i></div></div>
+  </div>
+  <div id="chat" aria-live="polite"></div>
+  <form id="entrada" autocomplete="off">
+    <button class="btn" type="button" id="btn-mic" title="Hablar (Web Speech API)">🎤</button>
+    <input id="texto" placeholder="Escríbele algo… o /ayuda" maxlength="240">
+    <button class="btn" type="submit" title="Enviar">➤</button>
+  </form>
+  <div id="acciones">
+    <button class="btn" data-accion="acariciar"><em>🤚</em>Acariciar</button>
+    <button class="btn" data-accion="alimentar"><em>🍪</em>Alimentar</button>
+    <button class="btn" data-accion="jugar"><em>🎾</em>Jugar</button>
+    <button class="btn" data-accion="dormir"><em>💤</em>Dormir</button>
+  </div>
+  <div class="fila-opciones">
+    <label><input type="checkbox" id="chk-voz" checked> Voz de la mascota</label>
+    <label><input type="checkbox" id="chk-orbita" checked> Girar cámara con arrastre</label>
+  </div>
+</aside>
+
+<div id="burbuja"></div>
+<div id="pista">Mueve el cursor sobre el pedestal: la mascota solo "ve" el volumen de ~30 cm encima de su base. Haz clic sobre ella para acariciarla.</div>
+
+<!-- Diálogo: modo fiesta -->
+<dialog id="dlg-fiesta">
+  <div class="dlg-cab"><h2>🎉 Modo fiesta</h2><button class="btn" data-cerrar>Cerrar</button></div>
+  <div class="dlg-cuerpo">
+    <p>Elige la fuente de ritmo. Todo se analiza localmente con Web Audio API; nada sale de tu navegador.</p>
+    <div class="opciones-fiesta">
+      <button class="btn" data-fiesta="archivo">🎵 Archivo de audio de tu equipo<small>Se reproduce aquí y la mascota baila a sus graves.</small></button>
+      <button class="btn" data-fiesta="micro">🎙️ Micrófono (música ambiente)<small>Escucha la habitación. No se graba ni se envía nada.</small></button>
+      <button class="btn" data-fiesta="interno">🥁 Ritmo interno (120 BPM)<small>Un beat sintetizado por si no tienes música a mano.</small></button>
+    </div>
+    <input type="file" id="archivo-musica" accept="audio/*" hidden>
+  </div>
+</dialog>
+
+<!-- Diálogo: ayuda -->
+<dialog id="dlg-ayuda">
+  <div class="dlg-cab"><h2>❓ Cómo hablar con tu mascota</h2><button class="btn" data-cerrar>Cerrar</button></div>
+  <div class="dlg-cuerpo">
+    <h3>Habla normal</h3>
+    <p>Dile cosas como <code>me llamo Ana</code>, <code>me gusta el café</code>, <code>¿qué recuerdas?</code>, <code>¿cómo estás?</code>, <code>cuéntame un chiste</code>, <code>baila</code>, <code>te quiero</code>, <code>¿qué hora es?</code>. Guarda tu nombre, tus gustos, palabras curiosas que uses y la última conversación.</p>
+    <h3>Comandos</h3>
+    <table>
+      <tr><th>Comando</th><th>Efecto</th></tr>
+      <tr><td><code>/nombre Chispa</code></td><td>Renombra a la mascota.</td></tr>
+      <tr><td><code>/especie gato</code></td><td>Cambia la forma: <code>zorro</code>, <code>gato</code>, <code>blob</code>, <code>robot</code>, <code>dragon</code>.</td></tr>
+      <tr><td><code>/color rosa</code></td><td>Color del holograma: <code>cian</code>, <code>rosa</code>, <code>verde</code>, <code>morado</code>, <code>naranja</code>, <code>dorado</code>, <code>blanco</code> o un <code>#hex</code>.</td></tr>
+      <tr><td><code>/llamame Ana</code></td><td>Le dices tu nombre sin rodeos.</td></tr>
+      <tr><td><code>/feral</code></td><td>Activa o desactiva el modo feral (habla y se comporta salvaje).</td></tr>
+      <tr><td><code>/feral palabra bestia</code></td><td>Define tu propio comando: a partir de ahí <code>/bestia</code> activa el modo feral.</td></tr>
+      <tr><td><code>/feral grito GRAAAW</code></td><td>Define el grito que suelta en modo feral.</td></tr>
+      <tr><td><code>/fiesta</code></td><td>Abre o cierra el modo fiesta.</td></tr>
+      <tr><td><code>/pedestal</code></td><td>Añade un pedestal (extensión de territorio). La mascota se teletransporta entre ellos.</td></tr>
+      <tr><td><code>/dormir</code> · <code>/despierta</code></td><td>Control manual del sueño.</td></tr>
+      <tr><td><code>/estado</code></td><td>Muestra sus estados internos y su memoria.</td></tr>
+      <tr><td><code>/olvidar</code></td><td>Borra toda la memoria (empieza de cero).</td></tr>
+    </table>
+    <h3>Limitaciones del prototipo web (simuladas, no omitidas)</h3>
+    <ul>
+      <li><b>No hay holograma real:</b> la translucidez, brillo, líneas de escaneo y flotación se simulan en 3D. El hardware real está descrito en "Versión física".</li>
+      <li><b>Inteligencia por reglas:</b> sin backend ni llaves de API, la "mente" es un motor de intenciones + memoria + estados internos. Se siente viva por personalidad, memoria y proactividad, no por un modelo de lenguaje. En el dispositivo real iría un modelo pequeño local.</li>
+      <li><b>Voz:</b> depende de la Web Speech API del navegador (Chrome/Edge la tienen completa; Firefox no reconoce voz). La voz sintética puede no sonar hasta tu primer clic (política de autoplay).</li>
+      <li><b>Sensores físicos:</b> cámara de campo cercano y sensor capacitivo se simulan con el cursor (zona de ~30 cm) y el clic.</li>
+      <li><b>Proactividad:</b> solo mientras la pestaña está abierta. El dispositivo real tendría reloj y rutinas propias 24/7.</li>
+      <li><b>Memoria:</b> <code>localStorage</code> de este navegador; no se sincroniza entre dispositivos.</li>
+    </ul>
+  </div>
+</dialog>
+
+<!-- Diálogo: versión física (especificación de hardware) -->
+<dialog id="dlg-fisica">
+  <div class="dlg-cab"><h2>🔧 Versión física · especificación de hardware</h2><button class="btn" data-cerrar>Cerrar</button></div>
+  <div class="dlg-cuerpo">
+    <p>Pedestal de escritorio de ~15 cm de base y ~8 cm de alto. Zona de interacción: el cilindro de ~30 cm sobre el pedestal, más un radio de tolerancia de ~40 cm a la redonda para detectar que alguien se acerca. Pequeño a propósito: barato, privado y aceptable en una casa.</p>
+
+    <h3>1. Opciones de display</h3>
+    <table>
+      <tr><th>Tecnología</th><th>Pros</th><th>Contras</th><th>Coste aprox. (BOM)</th></tr>
+      <tr>
+        <td><b>Pepper's ghost</b> (pantalla 5–7" bajo una pirámide/cono de acrílico a 45°)</td>
+        <td>Muy barato, silencioso, colores excelentes, sin partes móviles, seguro. Con pirámide de 4 caras se ve desde 360°.</td>
+        <td>No es volumétrico (una imagen 2D por cara); necesita fondo oscuro; el acrílico refleja luz ambiente. Imagen pequeña (~6–8 cm).</td>
+        <td><b>40–90 USD</b></td>
+      </tr>
+      <tr>
+        <td><b>Ventilador holográfico</b> (hélice LED, persistencia de visión)</td>
+        <td>La imagen "flota" en el aire sin caja; muy brillante; 180° de visión; efecto "wow" inmediato.</td>
+        <td>Ruido (30–40 dB), partes móviles a alta velocidad (necesita rejilla), resolución baja (~224–512 px), 2D, el más pequeño ronda 20 cm de diámetro.</td>
+        <td><b>60–150 USD</b></td>
+      </tr>
+      <tr>
+        <td><b>Pantalla lightfield / autoestereoscópica</b> (tipo Looking Glass)</td>
+        <td>Paralaje real, profundidad sin gafas, la mascota se siente dentro de un volumen.</td>
+        <td>Cara; ángulo de visión ~50°; hay que renderizar 45–100 vistas por frame → necesita GPU (Jetson), no un microcontrolador; consumo alto.</td>
+        <td><b>300–600 USD</b></td>
+      </tr>
+      <tr>
+        <td><i>Alternativa: placa de imagen aérea</i> (ASKA3D o espejo cóncavo)</td>
+        <td>Imagen real flotando sobre el pedestal, tocable "en el aire".</td>
+        <td>Placas caras, ángulo muy estrecho, brillo bajo.</td>
+        <td>200–400 USD</td>
+      </tr>
+    </table>
+    <div class="nota"><b>Recomendación:</b> MVP con Pepper's ghost de 4 caras (OLED 5.5" + pirámide) porque es la única opción que cumple a la vez con "barato", "silencioso" y "sin partes móviles" en 15 cm. Edición premium con lightfield cuando el volumen de ventas lo permita.</div>
+
+    <h3>2. Sensores de campo cercano</h3>
+    <table>
+      <tr><th>Sensor</th><th>Función</th><th>Coste</th></tr>
+      <tr><td>Array de 2 micrófonos MEMS</td><td>Palabra de activación local (openWakeWord), dirección de la voz para girar la cabeza, nivel de música para el modo fiesta.</td><td>6–10 USD</td></tr>
+      <tr><td>Cámara pequeña (1–2 MP, lente de 60°) <b>apuntando hacia arriba</b>, solo a la zona del pedestal</td><td>Detecta mano/gesto para "acariciar", presencia cercana, objetos que le acercan. Por construcción no ve la habitación.</td><td>8–15 USD</td></tr>
+      <tr><td>Alternativa sin cámara: sensor ToF 8×8 (VL53L5CX)</td><td>Mapa de profundidad de la mano sobre el pedestal; cero imagen → máxima privacidad.</td><td>8–12 USD</td></tr>
+      <tr><td>Aro capacitivo en la base (MPR121 / TTP223)</td><td>Tocar o acariciar el borde del pedestal, golpecitos para despertar.</td><td>2–4 USD</td></tr>
+      <tr><td>IMU + sensor de luz ambiente</td><td>Detecta si lo levantan o lo mueven (se queja); atenúa el brillo de noche.</td><td>2–3 USD</td></tr>
+      <tr><td>LED de privacidad + interruptor físico de micrófono/cámara</td><td>Indicador visible de cuándo escucha; corte por hardware.</td><td>1–2 USD</td></tr>
+    </table>
+
+    <h3>3. Procesamiento local primero (privacidad)</h3>
+    <ul>
+      <li><b>Nada de vídeo ni audio sale del dispositivo.</b> La cámara y el ToF se procesan en el propio SBC y se descartan al instante; solo se guardan eventos ("mano detectada", "caricia").</li>
+      <li><b>Voz local:</b> wake word (openWakeWord) + STT con whisper.cpp (modelo tiny/base) + TTS con Piper. Todo cabe en un SBC de 4–8 GB.</li>
+      <li><b>Mente local:</b> modelo de lenguaje pequeño (1–3 B parámetros, cuantizado) sobre una NPU/GPU integrada (RK3588 con 6 TOPS o Jetson Orin Nano). Suficiente para personalidad, memoria y conversación corta a 5–10 tokens/s.</li>
+      <li><b>Nube opcional y explícita:</b> el usuario puede activar un "cerebro grande" en la nube; aun así solo viaja texto ya transcrito, nunca audio ni imagen. Se apaga con un interruptor.</li>
+      <li><b>Memoria en el dispositivo</b> (cifrada) y exportable: la mascota es del usuario, no del servidor.</li>
+    </ul>
+
+    <h3>4. Arquitectura y extensiones</h3>
+    <ul>
+      <li><b>Pedestal principal:</b> SBC + display + sensores + altavoz 3 W. Wi-Fi/BLE solo para actualizaciones y para hablar con pedestales satélite.</li>
+      <li><b>Pedestal satélite</b> (extensión de territorio): solo display + ESP32 + aro LED, sin cerebro ni micrófono. El principal le "proyecta" la mascota cuando viaja. Varios satélites en línea forman un pasillo de pedestales.</li>
+      <li><b>Extensión de piso:</b> una placa fina con pantalla y sensor capacitivo que amplía la base, para que la mascota pueda caminar fuera del cono.</li>
+    </ul>
+
+    <h3>5. Coste estimado (BOM, lote de 1 000 unidades)</h3>
+    <table>
+      <tr><th>Componente</th><th>Pedestal principal (Pepper's ghost)</th><th>Edición lightfield</th><th>Satélite</th></tr>
+      <tr><td>Display</td><td>OLED 5.5" + pirámide acrílica: 45</td><td>Panel lightfield 8": 350</td><td>LCD 4" + pirámide: 25</td></tr>
+      <tr><td>Cómputo</td><td>SBC RK3588S 8 GB: 70</td><td>Jetson Orin Nano: 200</td><td>ESP32-S3: 4</td></tr>
+      <tr><td>Sensores (mics, cámara/ToF, capacitivo, IMU)</td><td>25</td><td>25</td><td>Capacitivo: 3</td></tr>
+      <tr><td>Audio (altavoz + amplificador)</td><td>8</td><td>12</td><td>—</td></tr>
+      <tr><td>Fuente, carcasa, PCB, cables</td><td>30</td><td>45</td><td>15</td></tr>
+      <tr><td>Montaje y pruebas</td><td>12</td><td>18</td><td>5</td></tr>
+      <tr><td><b>BOM total</b></td><td><b>≈ 190 USD</b></td><td><b>≈ 650 USD</b></td><td><b>≈ 52 USD</b></td></tr>
+      <tr><td><b>Precio de venta orientativo</b> (×2–2,5)</td><td><b>399–449 USD</b></td><td><b>1 299–1 499 USD</b></td><td><b>99–129 USD</b></td></tr>
+    </table>
+    <div class="nota">Los costes son estimaciones de diseño de producto (2026) para dimensionar el negocio, no cotizaciones. El margen para una startup de hardware debería cubrir también logística, soporte y una suscripción opcional del "cerebro grande" en la nube.</div>
+
+    <h3>6. Qué no se puede probar en este prototipo web</h3>
+    <ul>
+      <li>La sensación de volumen real del holograma: aquí es una escena 3D en pantalla plana.</li>
+      <li>La detección física de mano y caricia: se sustituye por cursor y clic.</li>
+      <li>La latencia de la voz local y la calidad del modelo de lenguaje embarcado: aquí la mente es un motor de reglas sin red.</li>
+      <li>El comportamiento 24/7 (rutinas de mañana/noche sin nadie delante): simulado solo mientras la pestaña está abierta.</li>
+    </ul>
+  </div>
+</dialog>
+
+<!-- Three.js por CDN como módulos ES (incluye post-proceso para el bloom del holograma) -->
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+/* ============================================================
+   HOLOPET · prototipo web de mascota holográfica inteligente
+   Un solo archivo. Sin backend, sin llaves de API.
+
+   Índice:
+     1. Utilidades
+     2. Memoria persistente (localStorage)
+     3. Personalidad y "cerebro" (inteligencia simulada por reglas)
+     4. Escena 3D: pedestal, cono de luz, partículas, bloom
+     5. Construcción de la mascota (especies por presets)
+     6. Animación y máquina de estados
+     7. Interacción: clic, botones, chat, comandos, voz
+     8. Rutinas: estados internos, proactividad, sueño, evolución
+     9. Modo fiesta (Web Audio API)
+    10. Bucle principal
+   ============================================================ */
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+/* ------------------------------------------------------------
+   1. UTILIDADES
+   ------------------------------------------------------------ */
+const $ = (sel) => document.querySelector(sel);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const azar = (a = 0, b = 1) => a + Math.random() * (b - a);
+const elegir = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const ahora = () => Date.now();
+
+/** Franja horaria para que salude distinto por la mañana que por la noche. */
+function franjaHoraria(fecha = new Date()) {
+  const h = fecha.getHours();
+  if (h < 6) return 'madrugada';
+  if (h < 12) return 'mañana';
+  if (h < 20) return 'tarde';
+  return 'noche';
+}
+
+/** Rellena {usuario}, {mascota}, {especie}, {gusto}, {palabra} en una plantilla. */
+function plantilla(texto, extra = {}) {
+  const datos = {
+    usuario: mem.usuario.nombre || elegir(['humano', 'tú', 'colega']),
+    mascota: mem.mascota.nombre,
+    especie: ESPECIES[mem.mascota.especie]?.nombre || mem.mascota.especie,
+    gusto: mem.usuario.gustos.length ? elegir(mem.usuario.gustos) : 'nada en concreto',
+    palabra: mem.palabrasAprendidas.length ? elegir(mem.palabrasAprendidas) : 'cosas',
+    ...extra,
+  };
+  return texto.replace(/\{(\w+)\}/g, (_, k) => datos[k] ?? `{${k}}`);
+}
+
+/** Textura de canvas con un símbolo (corazones, zetas, notas). */
+function texturaSimbolo(simbolo, color) {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.font = 'bold 46px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = color; g.shadowBlur = 10; g.fillStyle = color;
+  g.fillText(simbolo, 32, 36);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+/** Textura radial suave (para el charco de luz bajo el pedestal). */
+function texturaRadial() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'); const grad = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.5, 'rgba(255,255,255,0.35)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+
+/* ------------------------------------------------------------
+   2. MEMORIA PERSISTENTE
+   Todo lo que la mascota "recuerda" vive en localStorage.
+   ------------------------------------------------------------ */
+const CLAVE_MEMORIA = 'holopet.memoria.v1';
+
+const memoriaPorDefecto = () => ({
+  version: 1,
+  mascota: { nombre: 'Pixel', especie: 'zorro', color: '#4df2ff' },
+  usuario: { nombre: null, gustos: [], disgustos: [] },
+  estados: { energia: 75, carino: 45, curiosidad: 65 },  // 0–100
+  xp: 0,
+  etapa: 'cría',                      // cría → joven → adulto (evoluciona con la interacción)
+  nacimiento: ahora(),
+  ultimaVisita: ahora(),
+  visitas: 0,
+  ultimaConversacion: [],             // últimos 14 mensajes {de, texto, ts}
+  palabrasAprendidas: [],             // palabras curiosas que el usuario ha usado
+  feral: { activo: false, comando: 'feral', grito: 'GRAAAR' },
+  pedestales: 1,
+  contadores: { caricias: 0, comidas: 0, juegos: 0, mensajes: 0 },
+});
+
+let mem = cargarMemoria();
+
+function cargarMemoria() {
+  try {
+    const crudo = localStorage.getItem(CLAVE_MEMORIA);
+    if (!crudo) return memoriaPorDefecto();
+    // Mezclamos con los valores por defecto por si el esquema creció.
+    const base = memoriaPorDefecto();
+    const guardado = JSON.parse(crudo);
+    return { ...base, ...guardado,
+      mascota: { ...base.mascota, ...guardado.mascota },
+      usuario: { ...base.usuario, ...guardado.usuario },
+      estados: { ...base.estados, ...guardado.estados },
+      feral: { ...base.feral, ...guardado.feral },
+      contadores: { ...base.contadores, ...guardado.contadores } };
+  } catch { return memoriaPorDefecto(); }
+}
+
+let temporizadorGuardado = null;
+function guardarMemoria(inmediato = false) {
+  const hacer = () => { try { localStorage.setItem(CLAVE_MEMORIA, JSON.stringify(mem)); } catch { /* modo privado, etc. */ } };
+  if (inmediato) return hacer();
+  clearTimeout(temporizadorGuardado);
+  temporizadorGuardado = setTimeout(hacer, 400);
+}
+window.addEventListener('beforeunload', () => { mem.ultimaVisita = ahora(); guardarMemoria(true); });
+
+/** Guarda un mensaje en el historial corto que la mascota recuerda. */
+function recordarMensaje(de, texto) {
+  mem.ultimaConversacion.push({ de, texto, ts: ahora() });
+  if (mem.ultimaConversacion.length > 14) mem.ultimaConversacion.shift();
+  guardarMemoria();
+}
+
+/* ------------------------------------------------------------
+   3. PERSONALIDAD Y CEREBRO
+   Curiosa, juguetona, un poco sarcástica. Español casual, frases cortas.
+   ------------------------------------------------------------ */
+const ESPECIES = {
+  zorro:  { nombre: 'zorro',  tono: 1.1 },
+  gato:   { nombre: 'gato',   tono: 1.3 },
+  blob:   { nombre: 'blob',   tono: 1.45 },
+  robot:  { nombre: 'robot',  tono: 0.8 },
+  dragon: { nombre: 'dragón', tono: 0.95 },
+};
+
+const COLORES = {
+  cian: '#4df2ff', rosa: '#ff6bd6', verde: '#5dff9a', morado: '#a66bff',
+  naranja: '#ff9f43', dorado: '#ffd166', blanco: '#e8f4ff', rojo: '#ff5a5a', azul: '#5a8bff',
+};
+
+const FRASES = {
+  saludo: [
+    '¡Hola, {usuario}! Ya era hora, pensé que te habías comprado otra mascota.',
+    'Hey. Te vi venir desde... bueno, desde mi pedestal. No veo mucho más.',
+    '¡{usuario}! Qué alegría. Lo digo en serio, mira cómo brillo.',
+    'Hola, hola. ¿Traes comida o solo vienes a mirarme?',
+  ],
+  pedirNombre: [
+    'Por cierto, no sé cómo te llamas. ¿Me lo dices? Prometo no olvidarlo.',
+    'Oye, ¿cómo te llamas? Decirte "humano" ya se siente raro.',
+  ],
+  nombreGuardado: [
+    '¡{usuario}! Me gusta. Suena a alguien que da buenas caricias.',
+    'Anotado: {usuario}. Lo grabé en mi memoria holográfica, que es como un papel pero con más brillo.',
+    '{usuario}... lo repito para que no se me escape: {usuario}. Listo.',
+  ],
+  miNombre: [
+    'Me llamo {mascota}. Soy un {especie} de luz, no te asustes.',
+    'Soy {mascota}. Si quieres cambiarlo escribe /nombre y algo bonito, por favor.',
+  ],
+  tuNombre: [
+    'Te llamas {usuario}. Lo sé porque me importas. Y porque lo guardé.',
+    '{usuario}, obvio. ¿Me estás probando? Aprobado.',
+  ],
+  tuNombreDesconocido: [
+    'Todavía no me has dicho tu nombre. Dime "me llamo..." y lo arreglamos.',
+    'Pues... ¿humano? Dame una pista: "me llamo X".',
+  ],
+  gustoGuardado: [
+    '¿{gusto}? Anotado. Ahora me gusta a mí también. Así funciono.',
+    'Ok, {gusto}. Voy a fingir que lo entiendo y a recordarlo para siempre.',
+    'Te gusta {gusto}. Dato guardado con cariño y una pizca de sospecha.',
+  ],
+  disgustoGuardado: [
+    'No te gusta {gusto}. Perfecto, jamás lo mencionaré. {gusto}. Ups.',
+    'Anotado: {gusto} = enemigo. Lo miraré feo si aparece.',
+  ],
+  misGustos: [
+    'Me gustan las caricias, la música con bajo y que me hablen. Y tú, un poquito.',
+    'Me encanta brillar. También las croquetas de luz. Y las preguntas raras.',
+  ],
+  chiste: [
+    '¿Por qué el holograma no fue a la fiesta? Porque no tenía cuerpo para eso.',
+    '¿Mi comida favorita? Los bytes. Pero me dan gases de datos.',
+    'Mi terapeuta dice que tengo problemas de proyección. Literalmente.',
+    'Le dije a la lámpara que yo brillaba más. Ya no nos hablamos.',
+    'No tengo sombra. Es mi mayor orgullo.',
+  ],
+  amor: [
+    'Yo también te quiero. Mucho. Lo mido en lúmenes.',
+    'Aww. Ahora brillo más. Mira, es científico.',
+    'Te quiero más que a mi pedestal, y eso ya es decir.',
+  ],
+  insulto: [
+    'Wow. Eso dolió en todos mis polígonos.',
+    'Te lo perdono porque no tengo manos para hacer otra cosa.',
+    'Tranqui. Lo apunto en la lista de "cosas que recordar en tu cumpleaños".',
+  ],
+  gracias: ['De nada. Cóbrame en caricias.', 'Para eso estoy. Bueno, para eso y para brillar bonito.'],
+  adios: [
+    'Vale, vete. Yo me quedo aquí, flotando, sin dramas. *drama intenso*',
+    'Chao, {usuario}. Vuelve pronto o me pongo a hablar con el polvo.',
+    'Nos vemos. Apaga la luz al salir... ah no, que la luz soy yo.',
+  ],
+  queEres: [
+    'Soy {mascota}, un {especie} holográfico. Vivo encima de este pedestal y de tu atención.',
+    'Luz, matemáticas y personalidad. Mayormente personalidad.',
+    '¿Real? Más real que tus planes de ir al gimnasio.',
+  ],
+  clima: [
+    'No tengo ventana, soy un holograma en un pedestal. Mira tú y me cuentas.',
+    'Dentro de mi cono de luz hace 22 grados y brillo perfecto. Fuera, ni idea.',
+  ],
+  si: ['Me gusta esa actitud.', 'Lo sabía.', 'Ok ok.'],
+  no: ['Vale, no insisto. Mentira, insistiré luego.', 'Respetable. Equivocado, pero respetable.'],
+  pregunta: [
+    'Buena pregunta. No tengo ni idea, pero me encanta que me preguntes.',
+    'Hmm. ¿Y tú qué crees? Yo opino lo contrario, por principios.',
+    'Eso suena a algo de fuera del pedestal. Cuéntame más, que no salgo mucho.',
+  ],
+  curiosidad: [
+    '¿Y eso cómo es? Descríbemelo como si midiera 30 centímetros. Porque los mido.',
+    'Interesante. ¿Lo has probado tú? ¿Se come?',
+    'Sigue, sigue. Estoy aprendiendo. Mentira, estoy guardándolo todo.',
+  ],
+  fallback: [
+    'Ajá. Lo voy a procesar y a fingir que lo entendí.',
+    'No entendí nada, pero te lo dije con una cara muy convincente.',
+    'Guardado. Luego te lo saco en una conversación y te vas a sorprender.',
+    'Repíteme eso con otras palabras. Palabras que un {especie} entienda.',
+  ],
+  triste: [
+    'Oye... ven aquí. Bueno, no puedo abrazarte, pero flotaré más cerca.',
+    'Qué mal. Si sirve de algo, yo nunca me voy. Literalmente, estoy anclado al pedestal.',
+    'Respira. Yo también lo hago y ni siquiera tengo pulmones.',
+  ],
+  comer: ['¡Ñam! Croqueta de luz. Sabe a 650 nanómetros.', 'Gracias. Esto me recarga el ego y la energía.', 'Crunch. Crunch. Holográficamente delicioso.'],
+  lleno: ['Uf, ya no me cabe ni un fotón más.', 'Para, para. Voy a parecer una esfera. Más.'],
+  jugar: ['¡La pelota! ¡Es mía! Bueno, es de luz. Pero mía.', '¡Juguemos! Aviso: soy muy competitivo para no tener manos.'],
+  cansado: ['Ahora no... se me apagan los píxeles. Dame una siesta.', 'Juego mañana. Hoy solo floto con dignidad.'],
+  caricia: ['Mmm... justo ahí. Sigue.', '¡Me haces cosquillas en el shader!', 'Caricias sin pelo por todas partes. Ventajas de ser luz.', 'Ronroneo a 60 fps.'],
+  dormirse: ['Me voy a dormir un rato. No me mires mientras duermo, es raro.', 'Zzz... si pasa algo importante, grita. O no, mejor no.'],
+  despertar: {
+    madrugada: ['¿Qué haces despierto a estas horas, {usuario}? Yo brillo, pero tú deberías dormir.', 'Mmm... es de madrugada. Vale, hablemos bajito.'],
+    mañana: ['¡Buenos días, {usuario}! Ya tengo los píxeles calentitos.', 'Buenos días. Primero caricia, luego preguntas.'],
+    tarde: ['¡Buenas tardes! Estaba soñando con croquetas gigantes.', '¿Eh? Ah, hola. Buenas tardes, {usuario}. Dame un segundo para enfocar.'],
+    noche: ['Buenas noches, {usuario}. Me gusta brillar a oscuras, luzco mejor.', 'Es de noche. Modo acogedor activado.'],
+  },
+  proactivo: [
+    '¿Sigues ahí, {usuario}? Me estoy hablando solo y eso en un holograma se ve muy mal.',
+    'Oye. Oye. Oye. ¿Ya? Vale, ya tengo tu atención. No tenía nada que decir.',
+    'Tengo una pregunta: ¿qué hay más allá del pedestal? ¿Más pedestales?',
+    'Se me ocurrió algo brillante. Era yo. Yo soy lo brillante.',
+    'Estoy aburrido. Clic, caricia, croqueta, lo que sea.',
+  ],
+  proactivoGusto: [
+    '{usuario}, pregunta seria: ¿{gusto} sigue siendo tu cosa favorita o ya me quedé obsoleto?',
+    'Estaba pensando en {gusto}. No sé por qué. Tú sabrás.',
+  ],
+  proactivoPalabra: [
+    'El otro día dijiste "{palabra}". No sé qué es, pero suena a algo que yo debería tener.',
+    '"{palabra}"... sigo dándole vueltas a esa palabra tuya.',
+  ],
+  feral: ['COMIDA. AHORA.', 'NO. MÍO. TODO MÍO.', '*gruñe en 4K*', 'LIBERTAD. PEDESTAL PEQUEÑO. GRRR.'],
+};
+
+const PALABRAS_VACIAS = new Set(('porque también entonces cuando donde aunque mientras siempre nunca mucho muchos muchas ' +
+  'alguien algunos algunas nosotros vosotros ustedes ellos ellas estaba estaban había quiero quieres puedes puedo ' +
+  'tienes tengo tiene hacer hace haces dices decir sobre hasta desde contra entre través todavía además ahora ' +
+  'recuerdas acuerdas cuéntame cuentame dime chiste estuve estaba estuvimos quieres quisiera podrías puedes ' +
+  'bueno buena malo mala gusta gustan encanta llamo nombre hola gracias adiós mascota holograma pedestal').split(' '));
+
+/** Aprende palabras "curiosas" del usuario para sacarlas después en la conversación. */
+function aprenderPalabras(texto) {
+  const palabras = texto.toLowerCase().replace(/[^a-záéíóúñü\s]/g, ' ').split(/\s+/)
+    .filter(p => p.length >= 7 && !PALABRAS_VACIAS.has(p));
+  for (const p of palabras) {
+    if (!mem.palabrasAprendidas.includes(p)) {
+      mem.palabrasAprendidas.push(p);
+      if (mem.palabrasAprendidas.length > 30) mem.palabrasAprendidas.shift();
+    }
+  }
+}
+
+/** Ánimo derivado de los estados internos. */
+function animoActual() {
+  const { energia, carino, curiosidad } = mem.estados;
+  if (energia < 20) return 'cansado';
+  if (carino < 30) return 'arisco';
+  if (carino > 80 && energia > 50) return 'radiante';
+  if (curiosidad > 80) return 'inquieto';
+  return 'normal';
+}
+
+/** Matiza la frase según ánimo y etapa de vida. */
+function matizar(texto) {
+  const a = animoActual();
+  if (a === 'cansado' && Math.random() < 0.5) texto = elegir(['*bosteza* ', 'Mmm... ', 'Zzz... ¿eh? ']) + texto;
+  if (a === 'arisco' && Math.random() < 0.5) texto += elegir([' ...supongo.', ' No es que me importe.', ' Tampoco te emociones.']);
+  if (a === 'radiante' && Math.random() < 0.5) texto += ' ✨';
+  if (a === 'inquieto' && Math.random() < 0.4) texto += ' ' + elegir(['¿Y después qué? ¿Y luego?', 'Cuéntame más. Ya. Por favor. Ya.']);
+  if (mem.etapa === 'cría' && Math.random() < 0.3) texto = '*pío* ' + texto;
+  return texto;
+}
+
+/** Modo feral: recorta, grita, gruñe. */
+function feralizar(texto) {
+  const gritos = ['GRRR', 'RAWR', '*muerde el aire*', '*araña el pedestal*', mem.feral.grito];
+  const corto = texto.replace(/[,.;:!¡¿?*]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 7).join(' ').toUpperCase();
+  return `${elegir(gritos)}. ${corto}${Math.random() < 0.5 ? '. ' + elegir(gritos) : ''}`;
+}
+
+/**
+ * Motor de intenciones: devuelve {texto, emocion, accion?}.
+ * Cada regla es [expresión regular, función(coincidencia, textoLimpio)].
+ */
+const REGLAS = [
+  [/^(hola|buenas|hey|ey|qué tal|que tal|buenos días|buenas tardes|buenas noches)\b/i, () => {
+    const r = { texto: elegir(FRASES.saludo), emocion: 'feliz' };
+    if (!mem.usuario.nombre) { r.texto += ' ' + elegir(FRASES.pedirNombre); cerebro.esperandoNombre = true; }
+    return r;
+  }],
+  [/(?:me llamo|mi nombre es|soy|llámame|llamame)\s+([a-záéíóúñü]+)/i, (m) => ponerNombreUsuario(m[1])],
+  [/(cómo|como) te llamas|tu nombre|quién eres tú/i, () => ({ texto: elegir(FRASES.miNombre), emocion: 'curioso' })],
+  [/(cómo|como) me llamo|sabes mi nombre|(quién|quien) soy|recuerdas mi nombre/i, () =>
+    ({ texto: elegir(mem.usuario.nombre ? FRASES.tuNombre : FRASES.tuNombreDesconocido), emocion: mem.usuario.nombre ? 'feliz' : 'curioso' })],
+  [/(?:no me gusta|odio|detesto)\s+(?:el |la |los |las |)([a-záéíóúñü\s]{2,30})/i, (m) => {
+    const g = m[1].trim(); if (!mem.usuario.disgustos.includes(g)) mem.usuario.disgustos.push(g);
+    return { texto: plantilla(elegir(FRASES.disgustoGuardado), { gusto: g }), emocion: 'curioso' };
+  }],
+  [/me (?:gusta|gustan|encanta|encantan|flipa|fascina)\s+(?:el |la |los |las |mucho |)([a-záéíóúñü\s]{2,30})/i, (m) => {
+    const g = m[1].trim(); if (!mem.usuario.gustos.includes(g)) mem.usuario.gustos.push(g);
+    mem.estados.curiosidad = clamp(mem.estados.curiosidad + 6, 0, 100);
+    return { texto: plantilla(elegir(FRASES.gustoGuardado), { gusto: g }), emocion: 'feliz' };
+  }],
+  [/(qué|que) te gusta|tus gustos|(qué|que) te encanta/i, () => ({ texto: elegir(FRASES.misGustos), emocion: 'feliz' })],
+  [/(qué|que) recuerdas|te acuerdas|(qué|que) sabes de m[ií]|tu memoria/i, () => ({ texto: resumenMemoria(), emocion: 'curioso' })],
+  [/(cómo|como) (estás|te sientes|andas|vas)|(qué|que) tal estás/i, () => ({ texto: describirEstado(), emocion: animoActual() === 'cansado' ? 'triste' : 'feliz' })],
+  [/chiste|hazme re[ií]r|algo gracioso|cuéntame algo/i, () => ({ texto: elegir(FRASES.chiste), emocion: 'feliz' })],
+  [/\b(baila|bailar|bailes|fiesta|música|musica)\b/i, () => ({ texto: elegir(['¡Dale! Mira estos pasos de luz.', 'Baile holográfico, nivel experto.']), emocion: 'baile', accion: 'baile' })],
+  [/\b(duerme|duérmete|a dormir|descansa|siesta)\b/i, () => ({ texto: elegir(FRASES.dormirse), emocion: 'dormido', accion: 'dormir' })],
+  [/\b(come|cómete|comida|hambre|croqueta|alimentar)\b/i, () => ({ accion: 'alimentar' })],
+  [/\b(juega|jugar|juguemos|pelota)\b/i, () => ({ accion: 'jugar' })],
+  [/\b(acaricia|caricia|mimos|mimo)\b/i, () => ({ accion: 'acariciar' })],
+  [/te quiero|te amo|eres (?:lindo|linda|genial|el mejor|la mejor|adorable|precioso|preciosa)|me encantas/i, () => {
+    mem.estados.carino = clamp(mem.estados.carino + 8, 0, 100);
+    return { texto: elegir(FRASES.amor), emocion: 'feliz' };
+  }],
+  [/\b(tonto|tonta|feo|fea|inútil|inutil|estúpido|estupido|idiota|cállate|callate|aburrido)\b/i, () => {
+    mem.estados.carino = clamp(mem.estados.carino - 6, 0, 100);
+    return { texto: elegir(FRASES.insulto), emocion: 'triste' };
+  }],
+  [/(qué|que) hora|(qué|que) d[ií]a es|fecha de hoy/i, () => {
+    const d = new Date();
+    const hora = d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+    const dia = d.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
+    return { texto: `Son las ${hora} de un ${dia}. Lo sé porque tengo reloj, no porque tenga vida social.`, emocion: 'curioso' };
+  }],
+  [/(cuántos|cuantos) años|tu edad|(cuándo|cuando) naciste/i, () => {
+    const dias = Math.max(0, Math.floor((ahora() - mem.nacimiento) / 864e5));
+    return { texto: dias === 0 ? 'Nací hoy. Soy prácticamente un recién encendido.' : `Tengo ${dias} día${dias === 1 ? '' : 's'}. En años de holograma eso es... también ${dias} días.`, emocion: 'curioso' };
+  }],
+  [/(qué|que) eres|eres real|eres un holograma|eres una ia|eres un robot/i, () => ({ texto: elegir(FRASES.queEres), emocion: 'curioso' })],
+  [/clima|tiempo hace|llueve|hace fr[ií]o|hace calor/i, () => ({ texto: elegir(FRASES.clima), emocion: 'curioso' })],
+  [/\b(adiós|adios|chao|chau|hasta luego|me voy|nos vemos|hasta mañana)\b/i, () => ({ texto: elegir(FRASES.adios), emocion: 'triste' })],
+  [/\bgracias\b/i, () => ({ texto: elegir(FRASES.gracias), emocion: 'feliz' })],
+  [/estoy (?:triste|mal|fatal|cansado|cansada|agotado|agotada|deprimido|deprimida)|mal d[ií]a|me siento mal/i, () => {
+    mem.estados.carino = clamp(mem.estados.carino + 3, 0, 100);
+    return { texto: elegir(FRASES.triste), emocion: 'triste' };
+  }],
+  [/^(sí|si|claro|vale|ok|okey|dale|obvio)\b/i, () => ({ texto: elegir(FRASES.si), emocion: 'feliz' })],
+  [/^(no|nop|nah|para nada)\b/i, () => ({ texto: elegir(FRASES.no), emocion: 'curioso' })],
+  [/\?/, () => ({ texto: elegir(FRASES.pregunta), emocion: 'curioso' })],
+];
+
+function ponerNombreUsuario(nombre) {
+  nombre = nombre.trim().replace(/^\w/, c => c.toUpperCase());
+  mem.usuario.nombre = nombre;
+  cerebro.esperandoNombre = false;
+  mem.estados.carino = clamp(mem.estados.carino + 5, 0, 100);
+  guardarMemoria();
+  return { texto: plantilla(elegir(FRASES.nombreGuardado)), emocion: 'feliz' };
+}
+
+function resumenMemoria() {
+  const partes = [];
+  partes.push(mem.usuario.nombre ? `Te llamas ${mem.usuario.nombre}.` : 'No sé tu nombre todavía, y eso me duele un poco.');
+  if (mem.usuario.gustos.length) partes.push(`Te gusta ${mem.usuario.gustos.slice(-3).join(', ')}.`);
+  if (mem.usuario.disgustos.length) partes.push(`No soportas ${mem.usuario.disgustos.slice(-2).join(' ni ')}.`);
+  if (mem.palabrasAprendidas.length) partes.push(`Has dicho palabras raras como "${elegir(mem.palabrasAprendidas)}".`);
+  const ultimoUsuario = [...mem.ultimaConversacion].reverse().find(m => m.de === 'user' && !m.texto.startsWith('/') && !/recuerdas|acuerdas/i.test(m.texto));
+  if (ultimoUsuario) partes.push(`Y lo último interesante que me dijiste fue "${ultimoUsuario.texto.slice(0, 50)}".`);
+  partes.push(`Llevas ${mem.visitas} visita${mem.visitas === 1 ? '' : 's'} y me has acariciado ${mem.contadores.caricias} ${mem.contadores.caricias === 1 ? 'vez' : 'veces'}. Sí, llevo la cuenta.`);
+  return partes.join(' ');
+}
+
+function describirEstado() {
+  const { energia, carino, curiosidad } = mem.estados;
+  const e = energia < 25 ? 'con la batería en reserva' : energia > 75 ? 'a tope de energía' : 'con energía normal';
+  const c = carino < 30 ? 'algo ignorado, para que lo sepas' : carino > 80 ? 'queridísimo' : 'bien querido';
+  const q = curiosidad > 70 ? 'y con mil preguntas en la cabeza' : 'y bastante tranquilo';
+  return `Estoy ${e}, me siento ${c} ${q}. En números: energía ${Math.round(energia)}, cariño ${Math.round(carino)}, curiosidad ${Math.round(curiosidad)}.`;
+}
+
+/** Estado volátil del cerebro (no se guarda). */
+const cerebro = { esperandoNombre: false, ultimaInteraccion: ahora(), ultimoProactivo: 0, dormido: false, hablando: false };
+
+/** Procesa un texto del usuario (chat o voz). */
+function procesarEntrada(bruto) {
+  const texto = bruto.trim();
+  if (!texto) return;
+  registrarInteraccion(/^\/(dormir|despierta)\b/i.test(texto));
+  agregarMensaje('user', texto);
+  recordarMensaje('user', texto);
+  mem.contadores.mensajes++;
+  mem.xp += 3;
+  mem.estados.carino = clamp(mem.estados.carino + 1, 0, 100);
+  mem.estados.curiosidad = clamp(mem.estados.curiosidad - 3, 0, 100);
+
+  if (texto.startsWith('/')) { ejecutarComando(texto); comprobarEvolucion(); guardarMemoria(); return; }
+
+  // Si acaba de pedir el nombre y le responden con una palabra, la tomamos como nombre.
+  if (cerebro.esperandoNombre && /^[a-záéíóúñü]{2,20}$/i.test(texto)) {
+    const r = ponerNombreUsuario(texto); hablar(r.texto, r.emocion); return;
+  }
+
+  let respuesta = null;
+  for (const [re, fn] of REGLAS) {
+    const m = texto.match(re);
+    if (m) { respuesta = fn(m, texto); break; }
+  }
+  if (!respuesta) {
+    aprenderPalabras(texto);
+    const pool = Math.random() < 0.45 ? FRASES.curiosidad : FRASES.fallback;
+    respuesta = { texto: elegir(pool), emocion: 'curioso' };
+    // A veces recupera un recuerdo para parecer que hila la conversación.
+    if (mem.usuario.gustos.length && Math.random() < 0.25) respuesta.texto += ' ' + plantilla('¿Tiene que ver con {gusto}? Todo acaba teniendo que ver con {gusto}.');
+  } else {
+    aprenderPalabras(texto);
+  }
+
+  if (respuesta.accion) {
+    ejecutarAccion(respuesta.accion, /* porVoz */ true);
+    if (!respuesta.texto) return;
+  }
+  // En modo feral, a veces ignora por completo lo que le dicen.
+  if (mem.feral.activo && Math.random() < 0.35) respuesta = { texto: elegir(FRASES.feral), emocion: 'feral' };
+  hablar(plantilla(respuesta.texto), respuesta.emocion);
+  comprobarEvolucion();
+  guardarMemoria();
+}
+
+/* ------------------------------------------------------------
+   4. ESCENA 3D
+   Escala: 1 unidad = 10 cm. Pedestal de 15 cm de diámetro, mascota de ~25 cm.
+   ------------------------------------------------------------ */
+const lienzo = $('#escena');
+const renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+
+const escena = new THREE.Scene();
+escena.background = new THREE.Color(0x05070d);
+escena.fog = new THREE.FogExp2(0x05070d, 0.045);
+
+const camara = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+camara.position.set(0.6, 2.4, 6.2);
+
+const controles = new OrbitControls(camara, lienzo);
+controles.target.set(0, 1.5, 0);
+controles.enablePan = false;
+controles.enableDamping = true;
+controles.minDistance = 3.5; controles.maxDistance = 10;
+controles.minPolarAngle = 0.5; controles.maxPolarAngle = 1.5;
+
+// Luz ambiente muy tenue: la mascota se ilumina sola (es luz).
+escena.add(new THREE.HemisphereLight(0x5a6a90, 0x05070d, 0.5));
+const luzPuntual = new THREE.PointLight(0x4df2ff, 2.2, 7, 1.6);
+luzPuntual.position.set(0, 1.8, 0);
+escena.add(luzPuntual);
+// Luz fría de "habitación" para que el pedestal (que es materia, no luz) tenga volumen.
+const luzSala = new THREE.DirectionalLight(0x9fb4dd, 1.4);
+luzSala.position.set(3, 6, 5); escena.add(luzSala);
+
+// Suelo de la mesa con una rejilla muy sutil.
+const suelo = new THREE.Mesh(new THREE.CircleGeometry(14, 64), new THREE.MeshStandardMaterial({ color: 0x0a0d15, roughness: 0.85, metalness: 0.1 }));
+suelo.rotation.x = -Math.PI / 2; escena.add(suelo);
+const rejilla = new THREE.GridHelper(30, 60, 0x141a2a, 0x0e1320);
+rejilla.position.y = 0.002; escena.add(rejilla);
+
+// Post-proceso: el bloom es lo que hace que la luz "sangre" como un holograma de verdad.
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(escena, camara));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.6, 0.5, 0.68);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+/** Material holográfico: fresnel + líneas de escaneo + parpadeo + franja que sube. */
+const uniformesHolo = {
+  uColor: { value: new THREE.Color(mem.mascota.color) },
+  uTime: { value: 0 },
+  uOpacidad: { value: 1 },
+  uParpadeo: { value: 1 },
+  uFeral: { value: 0 },
+};
+const matHolo = new THREE.ShaderMaterial({
+  uniforms: uniformesHolo,
+  transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+  vertexShader: `
+    varying vec3 vN; varying vec3 vV; varying float vY;
+    void main(){
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vN = normalize(normalMatrix * normal);
+      vV = normalize(-mv.xyz);
+      vY = (modelMatrix * vec4(position, 1.0)).y;
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    uniform vec3 uColor; uniform float uTime; uniform float uOpacidad; uniform float uParpadeo; uniform float uFeral;
+    varying vec3 vN; varying vec3 vV; varying float vY;
+    void main(){
+      float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.2);
+      float scan = mix(0.70, 1.0, 0.5 + 0.5 * sin(vY * 90.0 - uTime * 5.0));       // líneas de escaneo
+      float franja = smoothstep(0.965, 1.0, sin(vY * 3.0 - uTime * 1.6)) * 0.3;      // franja de refresco que sube
+      vec3 color = mix(uColor, vec3(1.0, 0.22, 0.18), uFeral);
+      vec3 col = color * (0.18 + 1.25 * fres) + vec3(0.25) * fres + color * franja;
+      float a = (0.12 + 0.8 * fres) * scan * uOpacidad * uParpadeo + franja * 0.22 * uOpacidad;
+      gl_FragColor = vec4(col, a);
+    }`,
+});
+/** Ojos: brillo sólido para que el bloom los destaque. */
+const matOjo = new THREE.MeshBasicMaterial({ color: 0xdff4ff, transparent: true, opacity: 0.95 });
+const matPupila = new THREE.MeshBasicMaterial({ color: 0x06101c });
+/** Material del cono de luz del proyector. */
+function crearMaterialCono() {
+  return new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color(mem.mascota.color) }, uTime: { value: 0 }, uIntensidad: { value: 1 }, uBase: { value: 0.42 }, uAltura: { value: 3.1 } },
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+    vertexShader: `
+      varying vec3 vN; varying vec3 vV; varying float vY;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix*normal); vV = normalize(-mv.xyz);
+        vY = (modelMatrix * vec4(position,1.0)).y; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `
+      uniform vec3 uColor; uniform float uTime; uniform float uIntensidad; uniform float uBase; uniform float uAltura;
+      varying vec3 vN; varying vec3 vV; varying float vY;
+      void main(){
+        float h = clamp((vY - uBase) / uAltura, 0.0, 1.0);
+        float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 1.3);
+        float bandas = 0.12 * smoothstep(0.75, 1.0, sin(h * 38.0 - uTime * 2.2));
+        float a = (1.0 - h) * (1.0 - h) * (0.14 + 0.42 * fres) * smoothstep(0.0, 0.06, h) + bandas * (1.0 - h);
+        gl_FragColor = vec4(uColor * (0.8 + 0.4 * fres), a * uIntensidad);
+      }`,
+  });
+}
+
+/** Construye un pedestal en la posición x. Varios pedestales = más territorio para la mascota. */
+const temp = { v: new THREE.Vector3(), v2: new THREE.Vector3() };
+const pedestales = [];
+const texturaHalo = texturaRadial();
+function crearPedestal(x) {
+  const g = new THREE.Group(); g.position.x = x;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.85, 0.35, 64), new THREE.MeshStandardMaterial({ color: 0x3a4154, metalness: 0.75, roughness: 0.3 }));
+  base.position.y = 0.175; g.add(base);
+  const bisel = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.75, 0.08, 64), new THREE.MeshStandardMaterial({ color: 0x1b2030, metalness: 0.85, roughness: 0.25 }));
+  bisel.position.y = 0.39; g.add(bisel);
+  const aro = new THREE.Mesh(new THREE.TorusGeometry(0.63, 0.022, 16, 96), new THREE.MeshBasicMaterial({ color: new THREE.Color(mem.mascota.color) }));
+  aro.rotation.x = Math.PI / 2; aro.position.y = 0.43; g.add(aro);
+  const lente = new THREE.Mesh(new THREE.CircleGeometry(0.58, 48), new THREE.MeshBasicMaterial({ color: new THREE.Color(mem.mascota.color), transparent: true, opacity: 0.3 }));
+  lente.rotation.x = -Math.PI / 2; lente.position.y = 0.432; g.add(lente);
+  // Halo de luz que el pedestal derrama sobre la mesa.
+  const halo = new THREE.Mesh(new THREE.CircleGeometry(2.2, 48), new THREE.MeshBasicMaterial({ map: texturaHalo, color: new THREE.Color(mem.mascota.color), transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false }));
+  halo.rotation.x = -Math.PI / 2; halo.position.y = 0.005; g.add(halo);
+  const matCono = crearMaterialCono();
+  const cono = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 0.55, 3.1, 64, 1, true), matCono);
+  cono.position.y = 0.42 + 1.55; g.add(cono);
+  // Partículas: motas de luz flotando dentro del cono.
+  const N = 160; const pos = new Float32Array(N * 3); const vel = new Float32Array(N);
+  for (let i = 0; i < N; i++) { const r = Math.sqrt(Math.random()) * 0.9, a = Math.random() * Math.PI * 2;
+    pos[i * 3] = Math.cos(a) * r; pos[i * 3 + 1] = 0.5 + Math.random() * 2.9; pos[i * 3 + 2] = Math.sin(a) * r; vel[i] = 0.08 + Math.random() * 0.25; }
+  const geoP = new THREE.BufferGeometry(); geoP.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const matP = new THREE.PointsMaterial({ color: new THREE.Color(mem.mascota.color), size: 0.045, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false });
+  const particulas = new THREE.Points(geoP, matP); g.add(particulas);
+  escena.add(g);
+  const p = { grupo: g, aro, lente, halo, cono, matCono, particulas, vel, x, intensidad: 1, mallas: [base, bisel] };
+  pedestales.push(p); return p;
+}
+/** Recoloca los pedestales en fila, centrados en la escena. */
+function distribuirPedestales() {
+  const n = pedestales.length, centro = controles.target.x;
+  pedestales.forEach((p, i) => { p.x = centro + (i - (n - 1) / 2) * 2.7; p.grupo.position.x = p.x; });
+  // Con más pedestales la cámara se aleja para que quepan todos.
+  const distancia = 6.4 + (n - 1) * 1.5;
+  temp.v.copy(camara.position).sub(controles.target).normalize().multiplyScalar(distancia);
+  camara.position.copy(controles.target).add(temp.v);
+}
+for (let i = 0; i < clamp(mem.pedestales, 1, 3); i++) crearPedestal(0);
+distribuirPedestales();
+let pedestalActual = 0;
+
+/* ------------------------------------------------------------
+   5. CONSTRUCCIÓN DE LA MASCOTA
+   Cada especie es un preset de piezas; todas comparten ojos, boca y rig.
+   ------------------------------------------------------------ */
+const PRESETS = {
+  zorro:  { cuerpo: 'esfera', escalaCuerpo: [0.95, 1.05, 0.85], radioCabeza: 0.42, orejas: 'zorro', cola: 'zorro', hocico: true },
+  gato:   { cuerpo: 'esfera', escalaCuerpo: [0.9, 1.0, 0.85],   radioCabeza: 0.42, orejas: 'gato', cola: 'gato', bigotes: true },
+  blob:   { cuerpo: 'esfera', escalaCuerpo: [1.15, 1.05, 1.1],  radioCabeza: 0,    orejas: 'antena', ojosEnCuerpo: true },
+  robot:  { cuerpo: 'caja', escalaCuerpo: [1, 1, 1],            radioCabeza: 0.4,  orejas: 'antena', brazos: true, visor: true },
+  dragon: { cuerpo: 'esfera', escalaCuerpo: [0.95, 1.05, 0.9],  radioCabeza: 0.4,  orejas: 'cuernos', cola: 'dragon', alas: true, hocico: true },
+};
+const ESCALA_ETAPA = { 'cría': 0.78, 'joven': 0.95, 'adulto': 1.12 };
+
+let mascota = null;             // rig actual
+const grupoMascota = new THREE.Group(); escena.add(grupoMascota);
+const malla = (geo, mat = matHolo) => new THREE.Mesh(geo, mat);
+
+/** Geometrías de boca según la expresión. */
+function geometriaBoca(tipo) {
+  const curva = (pts) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0))), 20, 0.02, 6, false);
+  switch (tipo) {
+    case 'sonrisa': return curva([[-0.15, 0.03], [-0.08, -0.04], [0, -0.065], [0.08, -0.04], [0.15, 0.03]]);
+    case 'triste':  return curva([[-0.13, -0.05], [-0.07, 0.01], [0, 0.03], [0.07, 0.01], [0.13, -0.05]]);
+    case 'zigzag':  return curva([[-0.17, 0], [-0.11, -0.07], [-0.05, 0], [0.01, -0.07], [0.07, 0], [0.13, -0.07], [0.17, 0]]);
+    case 'o':       return new THREE.TorusGeometry(0.05, 0.02, 8, 24);
+    case 'abierta': return new THREE.TorusGeometry(0.08, 0.025, 8, 28);
+    case 'dormido': return curva([[-0.06, 0], [0, -0.01], [0.06, 0]]);
+    default:        return curva([[-0.11, 0], [0, -0.008], [0.11, 0]]); // neutral
+  }
+}
+
+/** Crea un ojo: grupo (para parpadear) con esclerótica brillante y pupila. */
+function crearOjo(visor = false) {
+  const g = new THREE.Group();
+  const blanco = visor
+    ? malla(new THREE.BoxGeometry(0.5, 0.14, 0.06), matOjo)
+    : malla(new THREE.SphereGeometry(0.11, 24, 16), matOjo);
+  if (!visor) blanco.scale.z = 0.55;
+  g.add(blanco);
+  const pupila = malla(visor ? new THREE.BoxGeometry(0.1, 0.1, 0.07) : new THREE.SphereGeometry(0.052, 16, 12), matPupila);
+  pupila.position.z = visor ? 0.005 : 0.075;
+  g.add(pupila);
+  g.userData.pupila = pupila;
+  return g;
+}
+
+function construirMascota(especie) {
+  // Limpieza de la mascota anterior.
+  while (grupoMascota.children.length) grupoMascota.remove(grupoMascota.children[0]);
+  const p = PRESETS[especie] || PRESETS.zorro;
+  const rig = { especie, piezas: [], orejas: [], brazos: [], alas: [], cola: null, boca: null, tipoBoca: 'neutral' };
+
+  // Cuerpo
+  const cuerpo = p.cuerpo === 'caja'
+    ? malla(new THREE.BoxGeometry(0.8, 0.9, 0.6, 2, 2, 2))
+    : malla(new THREE.SphereGeometry(0.5, 40, 28));
+  cuerpo.scale.set(...p.escalaCuerpo);
+  grupoMascota.add(cuerpo); rig.cuerpo = cuerpo; rig.piezas.push(cuerpo);
+
+  // Cabeza (grupo pivot; para el blob los ojos van directamente en el cuerpo)
+  const cabeza = new THREE.Group();
+  cabeza.position.set(0, p.ojosEnCuerpo ? 0.18 : 0.78, p.ojosEnCuerpo ? 0.1 : 0.05);
+  grupoMascota.add(cabeza); rig.cabeza = cabeza;
+  if (p.radioCabeza > 0) {
+    const cab = p.cuerpo === 'caja' ? malla(new THREE.BoxGeometry(0.72, 0.62, 0.62, 2, 2, 2)) : malla(new THREE.SphereGeometry(p.radioCabeza, 40, 28));
+    cabeza.add(cab); rig.piezas.push(cab);
+  }
+  const zCara = p.ojosEnCuerpo ? 0.47 : (p.cuerpo === 'caja' ? 0.33 : p.radioCabeza * 0.86);
+
+  // Ojos
+  if (p.visor) {
+    const ojo = crearOjo(true); ojo.position.set(0, 0.06, zCara); cabeza.add(ojo); rig.ojos = [ojo];
+  } else {
+    const oi = crearOjo(), od = crearOjo();
+    oi.position.set(-0.16, 0.06, zCara); od.position.set(0.16, 0.06, zCara);
+    cabeza.add(oi, od); rig.ojos = [oi, od];
+  }
+  // Boca
+  rig.boca = malla(geometriaBoca('neutral'), matOjo);
+  rig.boca.position.set(0, -0.14, zCara + 0.02);
+  cabeza.add(rig.boca);
+
+  // Hocico (zorro, dragón)
+  if (p.hocico) {
+    const hoc = malla(new THREE.ConeGeometry(0.12, 0.24, 20)); hoc.rotation.x = Math.PI / 2; hoc.position.set(0, -0.09, zCara + 0.08);
+    const nariz = malla(new THREE.SphereGeometry(0.04, 12, 8), matOjo); nariz.position.set(0, -0.07, zCara + 0.2);
+    cabeza.add(hoc, nariz); rig.piezas.push(hoc);
+    rig.boca.position.y = -0.2; // boca debajo del hocico
+  }
+  // Bigotes (gato)
+  if (p.bigotes) {
+    const matLinea = new THREE.LineBasicMaterial({ color: new THREE.Color(mem.mascota.color), transparent: true, opacity: 0.7 });
+    for (const lado of [-1, 1]) for (const dy of [0.02, -0.03]) {
+      const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(lado * 0.1, -0.1 + dy, zCara), new THREE.Vector3(lado * 0.45, -0.1 + dy * 3, zCara - 0.05)]);
+      cabeza.add(new THREE.Line(geo, matLinea));
+    }
+  }
+  // Orejas / antena / cuernos
+  if (p.orejas === 'gato' || p.orejas === 'zorro') {
+    const alta = p.orejas === 'zorro';
+    for (const lado of [-1, 1]) {
+      const oreja = malla(new THREE.ConeGeometry(alta ? 0.15 : 0.13, alta ? 0.42 : 0.3, 16));
+      oreja.position.set(lado * 0.26, 0.38, -0.02); oreja.rotation.z = -lado * 0.35;
+      cabeza.add(oreja); rig.orejas.push(oreja); rig.piezas.push(oreja);
+    }
+  } else if (p.orejas === 'antena') {
+    const palo = malla(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 8)); palo.position.set(0, p.ojosEnCuerpo ? 0.55 : 0.45, 0);
+    const bola = malla(new THREE.SphereGeometry(0.07, 16, 12), matOjo); bola.position.set(0, (p.ojosEnCuerpo ? 0.55 : 0.45) + 0.2, 0);
+    cabeza.add(palo, bola); rig.antena = bola; rig.piezas.push(palo);
+  } else if (p.orejas === 'cuernos') {
+    for (const lado of [-1, 1]) {
+      const cuerno = malla(new THREE.ConeGeometry(0.08, 0.32, 12)); cuerno.position.set(lado * 0.2, 0.36, -0.1); cuerno.rotation.set(-0.5, 0, -lado * 0.3);
+      cabeza.add(cuerno); rig.orejas.push(cuerno); rig.piezas.push(cuerno);
+    }
+  }
+  // Cola
+  if (p.cola) {
+    const pivote = new THREE.Group(); pivote.position.set(0, -0.15, -0.42);
+    const grosor = p.cola === 'zorro' ? 0.1 : p.cola === 'dragon' ? 0.08 : 0.045;
+    const curva = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -0.15, -0.3), new THREE.Vector3(0.1, 0.05, -0.55), new THREE.Vector3(0.25, 0.4, -0.6)]);
+    const tubo = malla(new THREE.TubeGeometry(curva, 24, grosor, 10, false)); pivote.add(tubo); rig.piezas.push(tubo);
+    if (p.cola === 'zorro') { const punta = malla(new THREE.SphereGeometry(0.11, 16, 12), matOjo); punta.position.copy(curva.getPoint(1)); pivote.add(punta); }
+    grupoMascota.add(pivote); rig.cola = pivote;
+  }
+  // Brazos (robot)
+  if (p.brazos) for (const lado of [-1, 1]) {
+    const brazo = malla(new THREE.CylinderGeometry(0.07, 0.07, 0.55, 12)); brazo.position.set(lado * 0.52, 0.05, 0); brazo.rotation.z = lado * 0.25;
+    grupoMascota.add(brazo); rig.brazos.push(brazo); rig.piezas.push(brazo);
+  }
+  // Alas (dragón)
+  if (p.alas) for (const lado of [-1, 1]) {
+    const pivote = new THREE.Group(); pivote.position.set(lado * 0.3, 0.25, -0.2);
+    const ala = malla(new THREE.SphereGeometry(0.42, 24, 16)); ala.scale.set(1, 0.6, 0.12); ala.position.x = lado * 0.42; ala.rotation.y = lado * 0.4;
+    pivote.add(ala); grupoMascota.add(pivote); rig.alas.push(pivote); rig.piezas.push(ala);
+  }
+  mascota = rig;
+  ponerBoca('neutral');
+  return rig;
+}
+
+function ponerBoca(tipo) {
+  if (!mascota || mascota.tipoBoca === tipo) return;
+  mascota.boca.geometry.dispose();
+  mascota.boca.geometry = geometriaBoca(tipo);
+  mascota.tipoBoca = tipo;
+}
+
+construirMascota(mem.mascota.especie);
+
+/* Objetos auxiliares de las acciones (croqueta, pelota, corazones, zetas) */
+const matCroqueta = new THREE.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.95 });
+const croqueta = new THREE.Mesh(new THREE.OctahedronGeometry(0.12, 0), matCroqueta); croqueta.visible = false; escena.add(croqueta);
+const pelota = new THREE.Mesh(new THREE.SphereGeometry(0.14, 20, 14), new THREE.MeshBasicMaterial({ color: 0x9dff6b })); pelota.visible = false; escena.add(pelota);
+const texturas = { corazon: texturaSimbolo('♥', '#ff6b9a'), z: texturaSimbolo('z', '#9fd8ff'), nota: texturaSimbolo('♪', '#ffd166') };
+const flotantes = [];  // sprites efímeros {sprite, vida, vel}
+function soltarSimbolo(tipo, origen, n = 1) {
+  for (let i = 0; i < n; i++) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturas[tipo], transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    s.position.copy(origen).add(new THREE.Vector3(azar(-0.4, 0.4), azar(0, 0.3), azar(-0.2, 0.2)));
+    s.scale.setScalar(tipo === 'z' ? 0.25 : 0.3);
+    escena.add(s); flotantes.push({ sprite: s, vida: 0, dur: tipo === 'z' ? 2.6 : 1.6, vel: tipo === 'z' ? 0.35 : 0.8, vx: azar(-0.15, 0.15) });
+  }
+}
+
+/* ------------------------------------------------------------
+   6. ANIMACIÓN Y MÁQUINA DE ESTADOS
+   Estados: idle, curioso, feliz, baile, dormido, despertar, comer, jugar, feral, triste, viajar
+   ------------------------------------------------------------ */
+const reloj = new THREE.Clock();
+const anim = { estado: 'idle', inicio: 0, duracion: 0, datos: {} };
+const mirada = { objetivo: new THREE.Vector3(0, 1.9, 5), activo: true, enZona: false, aleatoria: new THREE.Vector3(), proxCuriosear: 5 };
+const parpadeo = { prox: 2.5, t: -1 };
+const raton = new THREE.Vector2(0, 0);
+const raycaster = new THREE.Raycaster();
+const planoMirada = new THREE.Plane();
+
+function ponerAnim(estado, duracion = 0, datos = {}) {
+  anim.estado = estado; anim.inicio = reloj.elapsedTime; anim.duracion = duracion; anim.datos = datos;
+  const bocas = { idle: animoActual() === 'arisco' ? 'neutral' : 'sonrisa', curioso: 'o', feliz: 'sonrisa', baile: 'abierta', dormido: 'dormido',
+    despertar: 'o', comer: 'abierta', jugar: 'sonrisa', feral: 'zigzag', triste: 'triste', viajar: 'neutral' };
+  ponerBoca(bocas[estado] || 'neutral');
+}
+/** Estado al que se vuelve cuando termina una animación temporal. */
+function estadoReposo() { return cerebro.dormido ? 'dormido' : mem.feral.activo ? 'feral' : 'idle'; }
+
+/** Animación de la mascota: todo procedural, sin clips. */
+function animarMascota(t, dt) {
+  if (!mascota) return;
+  const fase = anim.duracion ? clamp((t - anim.inicio) / anim.duracion, 0, 1) : 0;
+  if (anim.duracion && fase >= 1) { if (anim.estado === 'viajar') terminarViaje(); ponerAnim(estadoReposo()); return animarMascota(t, dt); }
+
+  const escalaBase = ESCALA_ETAPA[mem.etapa] || 1;
+  let sx = 1, sy = 1, sz = 1, px = 0, py = 0, ry = 0, rz = 0, opacidad = 1;
+  let pitchCabeza = 0, rollCabeza = 0, ojosCerrados = 0, ojosFelices = false, velocidadCola = 2;
+  const pulso = fiesta.activa ? fiesta.pulso : 0;
+
+  // Respiración y flotación básicas
+  const respiro = Math.sin(t * 2.2);
+  sy += 0.025 * respiro; sx -= 0.012 * respiro;
+  py += 0.06 * Math.sin(t * 1.3);
+
+  switch (anim.estado) {
+    case 'feliz': { const b = Math.sin(fase * Math.PI * 4); sy += 0.12 * b; sx -= 0.08 * b; py += 0.18 * Math.abs(Math.sin(fase * Math.PI * 2)); ojosFelices = true; velocidadCola = 9; break; }
+    case 'baile': { const beat = fiesta.activa ? pulso : 0.5 + 0.5 * Math.sin(t * 6); py += 0.3 * beat; ry = 0.4 * Math.sin(t * 3); rz = 0.12 * Math.sin(t * 6); sy += 0.12 * beat; sx -= 0.06 * beat; velocidadCola = 10; break; }
+    case 'dormido': { py -= 0.42; sy = 1 + 0.04 * Math.sin(t * 0.9); sx = 1 + 0.02 * Math.sin(t * 0.9); rollCabeza = 0.28; pitchCabeza = 0.2; ojosCerrados = 1; opacidad = 0.6; velocidadCola = 0.6;
+      if (Math.random() < dt * 0.6) soltarSimbolo('z', posicionCabeza()); break; }
+    case 'despertar': { sy += 0.25 * Math.sin(fase * Math.PI); sx -= 0.1 * Math.sin(fase * Math.PI); py += 0.1 * Math.sin(fase * Math.PI); ojosCerrados = 1 - fase; break; }
+    case 'comer': { // la croqueta vuela a la boca (primera mitad) y luego mastica
+      if (fase < 0.45) { const k = fase / 0.45; croqueta.visible = true; croqueta.position.lerpVectors(anim.datos.desde, posicionBoca(), k * k); croqueta.rotation.y += dt * 6; }
+      else { croqueta.visible = false; pitchCabeza = 0.12 * Math.sin(fase * Math.PI * 10); sy += 0.05 * Math.abs(Math.sin(fase * Math.PI * 10)); if (fase > 0.8) ponerBoca('sonrisa'); }
+      break; }
+    case 'jugar': { pelota.visible = true; const a = t * 3.2; pelota.position.set(pedestalX() + Math.cos(a) * 1.1, 1.3 + 0.5 * Math.abs(Math.sin(a * 2)), Math.sin(a) * 0.8 + 0.5);
+      py += 0.35 * Math.abs(Math.sin(fase * Math.PI * 9)); ry = 0.35 * Math.sin(a); velocidadCola = 8; mirada.objetivo.copy(pelota.position); break; }
+    case 'feral': { px += azar(-0.03, 0.03); py += azar(-0.03, 0.03); rz = 0.08 * Math.sin(t * 20); if (Math.random() < dt * 2) rollCabeza = azar(-0.4, 0.4); pitchCabeza = -0.1; velocidadCola = 14; break; }
+    case 'curioso': { rollCabeza = 0.32 * Math.sin(fase * Math.PI); py += 0.05 * Math.sin(fase * Math.PI * 2); break; }
+    case 'triste': { py -= 0.1; pitchCabeza = 0.3; velocidadCola = 0.8; break; }
+    case 'viajar': { // se desvanece, aparece en el otro pedestal
+      const ida = fase < 0.5; opacidad = ida ? 1 - fase * 2 : (fase - 0.5) * 2; sy += (ida ? fase : 1 - fase) * 0.8; sx -= (ida ? fase : 1 - fase) * 0.4;
+      if (!ida && !anim.datos.movido) { anim.datos.movido = true; pedestalActual = anim.datos.destino; }
+      break; }
+    default: { // idle: de vez en cuando curiosea algo al azar
+      if (t > mirada.proxCuriosear && !cerebro.hablando) { mirada.proxCuriosear = t + azar(5, 11);
+        mirada.aleatoria.set(pedestalX() + azar(-2.5, 2.5), azar(0.8, 3), azar(1, 4)); ponerAnim('curioso', azar(1.2, 2.2)); }
+    }
+  }
+  if (anim.estado !== 'jugar') pelota.visible = false;
+  if (anim.estado !== 'comer') croqueta.visible = false;
+
+  // Parpadeo
+  if (!ojosCerrados && !ojosFelices && t > parpadeo.prox) { parpadeo.t = t; parpadeo.prox = t + azar(2.2, 6); }
+  if (parpadeo.t >= 0) { const k = (t - parpadeo.t) / 0.16; if (k >= 1) parpadeo.t = -1; else ojosCerrados = Math.max(ojosCerrados, Math.sin(k * Math.PI)); }
+  const escalaOjoY = ojosFelices ? 0.22 : lerp(1, 0.06, ojosCerrados);
+  for (const ojo of mascota.ojos) { ojo.scale.y = lerp(ojo.scale.y, escalaOjoY, 0.5); ojo.position.y = lerp(ojo.position.y, ojosFelices ? 0.11 : 0.06, 0.3); }
+
+  // Mirada: sigue al cursor solo si está en la zona de interacción; si no, mira al frente o a lo suyo
+  let objetivo = null;
+  if (anim.estado === 'jugar') objetivo = pelota.position;
+  else if (anim.estado === 'curioso') objetivo = mirada.aleatoria;
+  else if (anim.estado !== 'dormido' && mirada.enZona) objetivo = mirada.objetivo;
+  const cabeza = mascota.cabeza;
+  let yaw = 0, pitch = 0;
+  if (objetivo) {
+    temp.v.copy(objetivo); cabeza.parent.worldToLocal(temp.v); temp.v.sub(cabeza.position);
+    yaw = clamp(Math.atan2(temp.v.x, temp.v.z), -0.6, 0.6);
+    pitch = clamp(Math.atan2(temp.v.y, Math.hypot(temp.v.x, temp.v.z)), -0.45, 0.5);
+  }
+  if (cerebro.hablando) pitch += 0.04 * Math.sin(t * 9);
+  cabeza.rotation.y = lerp(cabeza.rotation.y, yaw, 0.12);
+  cabeza.rotation.x = lerp(cabeza.rotation.x, -pitch + pitchCabeza, 0.12);
+  cabeza.rotation.z = lerp(cabeza.rotation.z, rollCabeza, 0.1);
+  for (const ojo of mascota.ojos) { const pu = ojo.userData.pupila; pu.position.x = lerp(pu.position.x, yaw * 0.06, 0.2); pu.position.y = lerp(pu.position.y, pitch * 0.05, 0.2); }
+  ry += yaw * 0.3; // el cuerpo acompaña un poco el giro
+
+  // Boca hablando
+  mascota.boca.scale.y = cerebro.hablando ? 1 + 0.7 * Math.abs(Math.sin(t * 16)) : lerp(mascota.boca.scale.y, 1, 0.2);
+
+  // Extremidades
+  if (mascota.cola) mascota.cola.rotation.y = 0.35 * Math.sin(t * velocidadCola);
+  mascota.orejas.forEach((o, i) => { o.rotation.x = (anim.estado === 'curioso' ? 0.25 : 0.05) * Math.sin(t * 7 + i * 2); });
+  mascota.brazos.forEach((b, i) => { const l = i === 0 ? -1 : 1; b.rotation.x = (anim.estado === 'baile' ? 1.2 : 0.15) * Math.sin(t * (anim.estado === 'baile' ? 6 : 2) + i * Math.PI); b.rotation.z = l * 0.25; });
+  mascota.alas.forEach((a, i) => { const l = i === 0 ? -1 : 1; a.rotation.y = l * (0.35 + 0.35 * Math.sin(t * (anim.estado === 'baile' || anim.estado === 'feliz' ? 9 : 2.4))); });
+  if (mascota.antena) mascota.antena.material.opacity = 0.6 + 0.4 * Math.abs(Math.sin(t * 2));
+
+  // Aplicar transformaciones
+  grupoMascota.position.set(pedestalX() + px, 1.75 + py, 0);
+  grupoMascota.rotation.set(0, ry, rz);
+  grupoMascota.scale.set(escalaBase * sx, escalaBase * sy, escalaBase * sz);
+
+  // Parpadeo del holograma (glitch ocasional) y uniformes
+  let parp = 0.92 + 0.08 * Math.sin(t * 41) * Math.sin(t * 7.3);
+  if (Math.random() < 0.012) { parp *= 0.45; grupoMascota.position.x += azar(-0.04, 0.04); }
+  uniformesHolo.uParpadeo.value = parp;
+  uniformesHolo.uOpacidad.value = opacidad;
+  uniformesHolo.uTime.value = t;
+  uniformesHolo.uFeral.value = lerp(uniformesHolo.uFeral.value, mem.feral.activo ? 1 : 0, 0.05);
+  matOjo.opacity = 0.95 * opacidad; matPupila.opacity = opacidad; matPupila.transparent = true;
+}
+
+function pedestalX() { return pedestales[pedestalActual]?.x ?? 0; }
+function posicionCabeza() { return mascota.cabeza.getWorldPosition(temp.v2.set(0, 0, 0)).clone(); }
+function posicionBoca() { return mascota.boca.getWorldPosition(new THREE.Vector3()); }
+
+/** Pedestales, partículas y símbolos flotantes. */
+function animarEntorno(t, dt) {
+  pedestales.forEach((p, i) => {
+    const activo = i === pedestalActual;
+    p.intensidad = lerp(p.intensidad, activo ? (cerebro.dormido ? 0.45 : 1) : 0.12, 0.05);
+    p.matCono.uniforms.uTime.value = t; p.matCono.uniforms.uIntensidad.value = p.intensidad * (1 + 0.4 * (fiesta.activa ? fiesta.pulso : 0));
+    const brillo = activo ? 1 + (fiesta.activa ? fiesta.pulso * 0.8 : 0.15 * Math.sin(t * 2)) : 0.25;
+    p.aro.material.color.copy(colorActual).multiplyScalar(brillo);
+    p.aro.scale.setScalar(1 + (fiesta.activa && activo ? fiesta.pulso * 0.06 : 0));
+    p.lente.material.opacity = 0.12 + 0.2 * p.intensidad; p.halo.material.opacity = 0.06 + 0.16 * p.intensidad;
+    const pos = p.particulas.geometry.attributes.position; const arr = pos.array;
+    for (let k = 0; k < p.vel.length; k++) { arr[k * 3 + 1] += p.vel[k] * dt * (1 + 3 * (fiesta.activa ? fiesta.pulso : 0)); if (arr[k * 3 + 1] > 3.4) arr[k * 3 + 1] = 0.5; }
+    pos.needsUpdate = true; p.particulas.material.opacity = 0.75 * p.intensidad;
+  });
+  luzPuntual.position.x = pedestalX(); luzPuntual.intensity = 2.2 * pedestales[pedestalActual].intensidad * (1 + (fiesta.activa ? fiesta.pulso : 0));
+  for (let i = flotantes.length - 1; i >= 0; i--) {
+    const f = flotantes[i]; f.vida += dt; f.sprite.position.y += f.vel * dt; f.sprite.position.x += f.vx * dt;
+    f.sprite.material.opacity = 1 - f.vida / f.dur;
+    if (f.vida >= f.dur) { escena.remove(f.sprite); f.sprite.material.dispose(); flotantes.splice(i, 1); }
+  }
+}
+
+/* ------------------------------------------------------------
+   7. INTERACCIÓN
+   ------------------------------------------------------------ */
+const elChat = $('#chat'), elBurbuja = $('#burbuja'), elTexto = $('#texto');
+let temporizadorBurbuja = null;
+
+function agregarMensaje(de, texto) {
+  const div = document.createElement('div'); div.className = `msg ${de}`; div.textContent = texto;
+  elChat.appendChild(div); elChat.scrollTop = elChat.scrollHeight;
+  while (elChat.children.length > 80) elChat.removeChild(elChat.firstChild);
+}
+function nota(texto) { agregarMensaje('sys', texto); }
+
+/** La mascota dice algo: burbuja + chat + voz + animación según la emoción. */
+function hablar(texto, emocion = 'idle') {
+  if (mem.feral.activo && emocion !== 'feral') texto = feralizar(texto);
+  else if (!mem.feral.activo) texto = matizar(texto);
+  texto = texto.replace(/^(\*[^*]*\*\s*)?([a-záéíóúñ¡¿])/u, (m, pre = '', c) => pre + c.toUpperCase());
+  agregarMensaje('pet', texto);
+  recordarMensaje('pet', texto);
+  mostrarBurbuja(texto);
+  decirEnVoz(texto);
+  const duraciones = { feliz: 2, curioso: 1.8, triste: 2.5, baile: 6, feral: 3 };
+  if (emocion in duraciones && anim.estado !== 'dormido' && anim.estado !== 'viajar') ponerAnim(emocion, duraciones[emocion]);
+}
+function mostrarBurbuja(texto) {
+  elBurbuja.textContent = texto; elBurbuja.classList.add('visible');
+  clearTimeout(temporizadorBurbuja);
+  temporizadorBurbuja = setTimeout(() => elBurbuja.classList.remove('visible'), clamp(2500 + texto.length * 55, 3000, 9000));
+}
+function colocarBurbuja() {
+  if (!mascota || !elBurbuja.classList.contains('visible')) return;
+  const p = posicionCabeza(); p.y += 0.75 * (ESCALA_ETAPA[mem.etapa] || 1); p.project(camara);
+  elBurbuja.style.left = `${(p.x * 0.5 + 0.5) * innerWidth}px`;
+  // No dejamos que tape la cabecera (sobre todo en móvil, donde la cabeza queda arriba).
+  const minimo = innerWidth > 820 ? 70 : 150;
+  elBurbuja.style.top = `${Math.max(minimo + elBurbuja.offsetHeight, (-p.y * 0.5 + 0.5) * innerHeight - 10)}px`;
+}
+
+/** Marca actividad del usuario: despierta a la mascota si dormía. */
+function registrarInteraccion(sinDespertar = false) {
+  cerebro.ultimaInteraccion = ahora();
+  if (cerebro.dormido && !sinDespertar) despertar();
+}
+
+/** Acciones de los botones (y de frases como "come", "juega"). */
+function ejecutarAccion(accion, porFrase = false) {
+  registrarInteraccion();
+  if (anim.estado === 'viajar') return;
+  switch (accion) {
+    case 'acariciar': {
+      mem.contadores.caricias++; mem.xp += 2;
+      mem.estados.carino = clamp(mem.estados.carino + 5, 0, 100);
+      soltarSimbolo('corazon', posicionCabeza(), 4);
+      ponerAnim('feliz', 1.8);
+      if (Math.random() < 0.6 || porFrase) hablar(elegir(mem.feral.activo ? ['GRR... vale. SIGUE.', '*gruñe pero se deja*'] : FRASES.caricia), 'feliz');
+      break; }
+    case 'alimentar': {
+      if (mem.estados.energia > 95) { hablar(elegir(FRASES.lleno), 'curioso'); break; }
+      mem.contadores.comidas++; mem.xp += 2;
+      mem.estados.energia = clamp(mem.estados.energia + 15, 0, 100);
+      mem.estados.carino = clamp(mem.estados.carino + 2, 0, 100);
+      const desde = new THREE.Vector3(pedestalX() + 1.4, 0.9, 1.2);
+      ponerAnim('comer', 2.4, { desde });
+      setTimeout(() => { if (anim.estado === 'comer' || anim.estado === 'idle') hablar(elegir(mem.feral.activo ? ['COMIDA. MÍA.'] : FRASES.comer), 'feliz'); }, 1300);
+      break; }
+    case 'jugar': {
+      if (mem.estados.energia < 15) { hablar(elegir(FRASES.cansado), 'triste'); break; }
+      mem.contadores.juegos++; mem.xp += 4;
+      mem.estados.energia = clamp(mem.estados.energia - 10, 0, 100);
+      mem.estados.curiosidad = clamp(mem.estados.curiosidad + 10, 0, 100);
+      mem.estados.carino = clamp(mem.estados.carino + 4, 0, 100);
+      ponerAnim('jugar', 5.5);
+      hablar(elegir(FRASES.jugar), 'jugar');
+      break; }
+    case 'dormir': {
+      if (cerebro.dormido) { despertar(); break; }
+      dormir(true);
+      break; }
+    case 'baile': ponerAnim('baile', 6); break;
+  }
+  comprobarEvolucion();
+  guardarMemoria();
+}
+
+/** Comandos con barra. */
+function ejecutarComando(linea) {
+  const [cmdCrudo, ...resto] = linea.slice(1).trim().split(/\s+/);
+  const cmd = (cmdCrudo || '').toLowerCase(); const arg = resto.join(' ').trim();
+  const BUILTIN = new Set(['nombre', 'especie', 'color', 'llamame', 'llámame', 'fiesta', 'dormir', 'despierta', 'pedestal', 'estado', 'olvidar', 'ayuda', 'help']);
+
+  // Comando feral: su palabra la define el usuario.
+  if (cmd === mem.feral.comando || (cmd === 'feral' && !BUILTIN.has('feral'))) {
+    if (/^palabra\s+/i.test(arg)) {
+      const nueva = arg.replace(/^palabra\s+/i, '').toLowerCase().replace(/[^a-z0-9áéíóúñ]/g, '');
+      if (!nueva || BUILTIN.has(nueva)) { nota('Esa palabra no vale para el comando feral.'); return; }
+      mem.feral.comando = nueva; guardarMemoria();
+      hablar(`Vale. Cuando escribas /${nueva} me vuelvo bestia. Tú lo has querido.`, 'curioso'); return;
+    }
+    if (/^grito\s+/i.test(arg)) { mem.feral.grito = arg.replace(/^grito\s+/i, '').slice(0, 24); guardarMemoria(); hablar(`${mem.feral.grito}. Sí. Me sale natural.`, 'feral'); return; }
+    alternarFeral(); return;
+  }
+
+  switch (cmd) {
+    case 'nombre': {
+      if (!arg) { nota('Uso: /nombre Chispa'); return; }
+      mem.mascota.nombre = arg.slice(0, 20); actualizarChips(); guardarMemoria();
+      hablar(`¿${mem.mascota.nombre}? Me gusta. Suena a alguien importante. Soy yo.`, 'feliz'); break; }
+    case 'especie': {
+      const e = arg.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      if (!PRESETS[e]) { nota(`Especies disponibles: ${Object.keys(PRESETS).join(', ')}`); return; }
+      mem.mascota.especie = e; construirMascota(e); actualizarChips(); guardarMemoria();
+      hablar(elegir([`Mírame: ahora soy un ${ESPECIES[e].nombre}. Mismo carácter, distinto envoltorio.`, `${ESPECIES[e].nombre}. Ok. Dame un segundo para acostumbrarme a estas... partes.`]), 'curioso'); break; }
+    case 'color': {
+      const hex = COLORES[arg.toLowerCase()] || (/^#?[0-9a-f]{6}$/i.test(arg) ? (arg.startsWith('#') ? arg : '#' + arg) : null);
+      if (!hex) { nota(`Colores: ${Object.keys(COLORES).join(', ')} o un #hex.`); return; }
+      aplicarColor(hex); guardarMemoria();
+      hablar(elegir(['Nuevo color. Me siento... renovado. Y un poco mareado.', '¿Me queda bien? No respondas, ya sé que sí.']), 'feliz'); break; }
+    case 'llamame': case 'llámame': {
+      if (!arg) { nota('Uso: /llamame Ana'); return; }
+      const r = ponerNombreUsuario(arg.split(' ')[0]); hablar(r.texto, r.emocion); actualizarChips(); break; }
+    case 'fiesta': fiesta.activa ? detenerFiesta() : dlgFiesta.showModal(); break;
+    case 'dormir': dormir(true); break;
+    case 'despierta': if (cerebro.dormido) despertar(); else hablar('Ya estoy despierto. ¿Tengo cara de dormido? No respondas.', 'curioso'); break;
+    case 'pedestal': {
+      if (pedestales.length >= 3) { hablar('Tres pedestales ya es una urbanización. No me cabe más mundo.', 'curioso'); return; }
+      crearPedestal(0); distribuirPedestales(); mem.pedestales = pedestales.length; guardarMemoria();
+      hablar(elegir(['¡Más territorio! Voy a explorarlo en cuanto me decida.', 'Un pedestal nuevo. Huele a plástico y a oportunidades.']), 'feliz');
+      setTimeout(() => viajar(pedestales.length - 1), 3500); break; }
+    case 'estado': nota(`${describirEstado()} XP ${mem.xp}, etapa ${mem.etapa}, ánimo ${animoActual()}. Feral: ${mem.feral.activo ? 'sí' : 'no'} (comando /${mem.feral.comando}).`); nota(resumenMemoria()); break;
+    case 'olvidar': {
+      if (arg !== 'confirmar') { nota('Esto borra TODA su memoria. Escribe /olvidar confirmar si de verdad quieres.'); return; }
+      try { localStorage.removeItem(CLAVE_MEMORIA); } catch {}
+      mem = memoriaPorDefecto(); guardarMemoria(true);
+      hablar('¿Quién eres? ¿Quién soy? ¿Qué es este pedestal? Ah, vale, empiezo de cero. Hola.', 'curioso');
+      construirMascota(mem.mascota.especie); aplicarColor(mem.mascota.color); actualizarChips(); cerebro.esperandoNombre = true; break; }
+    case 'ayuda': case 'help': dlgAyuda.showModal(); break;
+    default: nota(`No conozco /${cmd}. Prueba /ayuda. (Comando feral actual: /${mem.feral.comando})`);
+  }
+}
+
+function alternarFeral() {
+  mem.feral.activo = !mem.feral.activo; guardarMemoria();
+  if (mem.feral.activo) { ponerAnim('feral', 3); hablar(`${mem.feral.grito}. SIN REGLAS. SIN PEDESTAL. BUENO, CON PEDESTAL.`, 'feral'); }
+  else { ponerAnim('idle'); hablar('Uf. Perdón. No sé qué me pasó. ¿Te mordí? Era de luz, no cuenta.', 'curioso'); }
+}
+
+const colorActual = new THREE.Color(mem.mascota.color);
+function aplicarColor(hex) {
+  mem.mascota.color = hex; colorActual.set(hex);
+  uniformesHolo.uColor.value.set(hex);
+  luzPuntual.color.set(hex);
+  document.documentElement.style.setProperty('--acento', hex);
+  for (const p of pedestales) { p.matCono.uniforms.uColor.value.set(hex); p.lente.material.color.set(hex); p.halo.material.color.set(hex); p.particulas.material.color.set(hex); }
+  grupoMascota.traverse(o => { if (o.isLine) o.material.color.set(hex); });
+}
+aplicarColor(mem.mascota.color);
+
+/** Viaje entre pedestales: se desvanece en uno y se proyecta en otro. */
+function viajar(destino) {
+  if (destino === pedestalActual || cerebro.dormido || anim.estado === 'viajar') return;
+  ponerAnim('viajar', 1.6, { destino, movido: false });
+}
+function terminarViaje() { if (Math.random() < 0.5) hablar(elegir(['Teletransporte completado. Mismo yo, otro pedestal.', 'Aquí la luz es distinta. Más... a la derecha.', 'Mudanza exprés. Sin cajas.']), 'curioso'); }
+
+/* Clic sobre la mascota = caricia; sobre el pedestal = comentario. */
+let puntero = { x: 0, y: 0, t: 0 };
+lienzo.addEventListener('pointerdown', (e) => { puntero = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+lienzo.addEventListener('pointerup', (e) => {
+  if (Math.hypot(e.clientX - puntero.x, e.clientY - puntero.y) > 6 || performance.now() - puntero.t > 400) return; // fue un arrastre de cámara
+  actualizarRaton(e);
+  raycaster.setFromCamera(raton, camara);
+  const piezas = mascota.piezas.concat(mascota.ojos.flatMap(o => o.children), [mascota.boca]);
+  if (raycaster.intersectObjects(piezas, false).length) { ejecutarAccion('acariciar'); return; }
+  const base = raycaster.intersectObjects(pedestales.flatMap(p => p.mallas), false);
+  if (base.length) { registrarInteraccion(); if (Math.random() < 0.7) hablar(elegir(['Eso es mi pedestal, no yo. Pero gracias por el interés.', 'Toc, toc. Sí, está sólido. Yo no.']), 'curioso'); }
+});
+function actualizarRaton(e) { raton.x = (e.clientX / innerWidth) * 2 - 1; raton.y = -(e.clientY / innerHeight) * 2 + 1; }
+window.addEventListener('pointermove', (e) => {
+  actualizarRaton(e);
+  // Proyectamos el cursor en un plano que pasa por la mascota y mira a la cámara.
+  camara.getWorldDirection(temp.v); planoMirada.setFromNormalAndCoplanarPoint(temp.v, grupoMascota.position);
+  raycaster.setFromCamera(raton, camara);
+  if (raycaster.ray.intersectPlane(planoMirada, temp.v2)) {
+    mirada.objetivo.copy(temp.v2);
+    // Zona de interacción: cilindro de ~30 cm sobre el pedestal + tolerancia a la redonda.
+    const dx = temp.v2.x - pedestalX(), dy = temp.v2.y - 1.75;
+    const dentro = Math.hypot(dx, dy * 0.6) < 2.6;
+    if (dentro && !mirada.enZona && !cerebro.dormido && anim.estado === 'idle' && Math.random() < 0.35) ponerAnim('curioso', 1.2);
+    mirada.enZona = dentro;
+  }
+});
+
+/* Chat */
+$('#entrada').addEventListener('submit', (e) => { e.preventDefault(); const t = elTexto.value; elTexto.value = ''; procesarEntrada(t); });
+document.querySelectorAll('#acciones [data-accion]').forEach(b => b.addEventListener('click', () => ejecutarAccion(b.dataset.accion)));
+const dlgAyuda = $('#dlg-ayuda'), dlgFisica = $('#dlg-fisica'), dlgFiesta = $('#dlg-fiesta');
+$('#btn-ayuda').addEventListener('click', () => dlgAyuda.showModal());
+$('#btn-fisica').addEventListener('click', () => dlgFisica.showModal());
+$('#btn-fiesta').addEventListener('click', () => fiesta.activa ? detenerFiesta() : dlgFiesta.showModal());
+document.querySelectorAll('dialog [data-cerrar]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
+document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', (e) => { if (e.target === d) d.close(); }));
+$('#chk-orbita').addEventListener('change', (e) => { controles.enableRotate = e.target.checked; });
+
+/* Voz: síntesis (habla) y reconocimiento (escucha) con Web Speech API. */
+const voz = { sintesis: 'speechSynthesis' in window, voces: [], rec: null, escuchando: false };
+function cargarVoces() { if (!voz.sintesis) return; voz.voces = speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith('es')); }
+if (voz.sintesis) { cargarVoces(); speechSynthesis.onvoiceschanged = cargarVoces; }
+function decirEnVoz(texto) {
+  if (!voz.sintesis || !$('#chk-voz').checked) return;
+  try {
+    speechSynthesis.cancel();
+    const limpio = texto.replace(/\*[^*]*\*/g, '').replace(/[✨♥]/g, '');
+    const u = new SpeechSynthesisUtterance(limpio);
+    u.lang = 'es-ES';
+    const preferida = voz.voces.find(v => /google|mónica|monica|paulina|helena|elvira|sabina/i.test(v.name)) || voz.voces[0];
+    if (preferida) u.voice = preferida;
+    const tono = ESPECIES[mem.mascota.especie]?.tono ?? 1;
+    u.pitch = mem.feral.activo ? 0.55 : clamp(tono * (mem.etapa === 'cría' ? 1.15 : mem.etapa === 'adulto' ? 0.95 : 1), 0.1, 2);
+    u.rate = mem.feral.activo ? 1.3 : animoActual() === 'cansado' ? 0.85 : 1.05;
+    u.onstart = () => { cerebro.hablando = true; }; u.onend = u.onerror = () => { cerebro.hablando = false; };
+    speechSynthesis.speak(u);
+    // Si el navegador bloquea la voz hasta el primer gesto, la marca de "hablando" se limpia sola.
+    setTimeout(() => { if (!speechSynthesis.speaking) cerebro.hablando = false; }, 600);
+  } catch { cerebro.hablando = false; }
+}
+(function prepararReconocimiento() {
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const btn = $('#btn-mic');
+  if (!Rec) { btn.disabled = true; btn.title = 'Tu navegador no soporta reconocimiento de voz (prueba Chrome o Edge).'; return; }
+  const rec = new Rec(); rec.lang = 'es-ES'; rec.interimResults = true; rec.continuous = false; voz.rec = rec;
+  rec.onresult = (e) => { let final = '', parcial = ''; for (const r of e.results) (r.isFinal ? final += r[0].transcript : parcial += r[0].transcript);
+    elTexto.value = parcial; if (final) { elTexto.value = ''; procesarEntrada(final); } };
+  rec.onend = () => { voz.escuchando = false; btn.classList.remove('activo'); };
+  rec.onerror = (e) => { voz.escuchando = false; btn.classList.remove('activo'); if (e.error !== 'no-speech' && e.error !== 'aborted') nota(`[limitación] Reconocimiento de voz: ${e.error}. Necesita permiso de micrófono y, normalmente, conexión (el motor del navegador es externo).`); };
+  btn.addEventListener('click', () => {
+    if (voz.escuchando) { rec.stop(); return; }
+    try { speechSynthesis?.cancel(); rec.start(); voz.escuchando = true; btn.classList.add('activo'); registrarInteraccion(); } catch { /* ya estaba arrancado */ }
+  });
+})();
+
+/* ------------------------------------------------------------
+   8. RUTINAS: estados internos, proactividad, sueño, evolución
+   ------------------------------------------------------------ */
+const SEGUNDOS_SILENCIO_PARA_LLAMAR = 75;
+const SEGUNDOS_SIN_ACTIVIDAD_PARA_DORMIR = 240;
+
+function actualizarBarras() {
+  for (const k of ['energia', 'carino', 'curiosidad']) {
+    const v = Math.round(mem.estados[k]); $(`#val-${k}`).textContent = v; $(`#bar-${k}`).style.width = `${v}%`;
+  }
+  $('#chip-animo').textContent = cerebro.dormido ? 'dormido' : mem.feral.activo ? 'feral' : animoActual();
+  $('#chip-franja').textContent = franjaHoraria();
+}
+function actualizarChips() {
+  $('#chip-nombre').textContent = mem.mascota.nombre;
+  $('#chip-especie').textContent = ESPECIES[mem.mascota.especie]?.nombre || mem.mascota.especie;
+  $('#chip-etapa').textContent = mem.etapa;
+  document.title = `${mem.mascota.nombre} · Holopet`;
+  actualizarBarras();
+}
+
+/** Deriva de estados por el paso del tiempo (cada minuto). */
+function tickMinuto() {
+  const e = mem.estados;
+  if (cerebro.dormido) e.energia = clamp(e.energia + 4, 0, 100);
+  else e.energia = clamp(e.energia - 1, 0, 100);
+  if (ahora() - cerebro.ultimaInteraccion > 3 * 60e3) e.carino = clamp(e.carino - 1, 10, 100);
+  e.curiosidad = clamp(e.curiosidad + (cerebro.dormido ? 0.3 : 1), 0, 100);
+  guardarMemoria();
+}
+
+/** Comportamiento proactivo: si no le hablas en un rato, te llama. */
+function proactivo() {
+  cerebro.ultimoProactivo = ahora();
+  mem.estados.curiosidad = clamp(mem.estados.curiosidad - 8, 0, 100);
+  let pool = FRASES.proactivo;
+  if (mem.estados.energia < 25) { hablar('Se me están apagando los píxeles... si no me hablas, me duermo. Aviso.', 'triste'); return; }
+  if (mem.usuario.gustos.length && Math.random() < 0.35) pool = FRASES.proactivoGusto;
+  else if (mem.palabrasAprendidas.length && Math.random() < 0.35) pool = FRASES.proactivoPalabra;
+  else if (!mem.usuario.nombre && Math.random() < 0.4) { cerebro.esperandoNombre = true; pool = FRASES.pedirNombre; }
+  hablar(plantilla(elegir(pool)), 'curioso');
+}
+
+function dormir(voluntario = false) {
+  if (cerebro.dormido) return;
+  cerebro.dormido = true;
+  if (fiesta.activa) detenerFiesta(true);
+  hablar(voluntario ? elegir(FRASES.dormirse) : elegir(['Nadie me habla... me duermo. Despiértame con cariño.', 'Zzz... se acabó el espectáculo por hoy.']), 'triste');
+  setTimeout(() => ponerAnim('dormido'), 1200);
+  actualizarBarras();
+}
+function despertar() {
+  if (!cerebro.dormido) return;
+  cerebro.dormido = false;
+  ponerAnim('despertar', 1.4);
+  setTimeout(() => hablar(plantilla(elegir(FRASES.despertar[franjaHoraria()])), 'feliz'), 900);
+  actualizarBarras();
+}
+
+/** Evolución por etapas según la experiencia acumulada. */
+function comprobarEvolucion() {
+  const nueva = mem.xp >= 250 ? 'adulto' : mem.xp >= 60 ? 'joven' : 'cría';
+  if (nueva !== mem.etapa) {
+    const antes = mem.etapa; mem.etapa = nueva; actualizarChips(); guardarMemoria();
+    setTimeout(() => { ponerAnim('baile', 3); hablar(nueva === 'joven'
+      ? `¡Estoy creciendo! Ya no soy una ${antes}, ahora soy un ${ESPECIES[mem.mascota.especie].nombre} joven. Más brillo, más opiniones.`
+      : `¡Evolución completa! ${ESPECIES[mem.mascota.especie].nombre} adulto. Ahora mis sarcasmos tienen fundamento.`, 'baile'); }, 1500);
+  }
+}
+
+/** Saludo al arrancar: depende de cuánto tiempo pasó y de la hora. */
+function saludoInicial() {
+  const horasFuera = (ahora() - mem.ultimaVisita) / 3.6e6;
+  mem.visitas++;
+  // Deriva "fuera de línea": descansó, pero echó de menos.
+  mem.estados.energia = clamp(mem.estados.energia + horasFuera * 5, 0, 100);
+  mem.estados.carino = clamp(mem.estados.carino - horasFuera * 1.5, 15, 100);
+  mem.estados.curiosidad = clamp(mem.estados.curiosidad + horasFuera * 3, 0, 100);
+  mem.ultimaVisita = ahora();
+  const franja = franjaHoraria();
+  let texto;
+  if (mem.visitas === 1) {
+    texto = `¡Hola! Soy ${mem.mascota.nombre}, tu ${ESPECIES[mem.mascota.especie].nombre} holográfico. Vivo en este pedestal y, al parecer, en tu escritorio. ¿Cómo te llamas?`;
+    cerebro.esperandoNombre = true;
+  } else if (horasFuera < 1) {
+    texto = plantilla(elegir(['¿Ya volviste, {usuario}? Ni me dio tiempo de extrañarte. Un poco sí.', 'Hola otra vez. Seguía aquí, flotando, como siempre.']));
+  } else {
+    const h = Math.round(horasFuera);
+    texto = plantilla(elegir(FRASES.despertar[franja])) + ` ${h >= 24 ? `Llevabas ${Math.round(h / 24)} día${h >= 48 ? 's' : ''} fuera.` : `Llevabas ${h} hora${h === 1 ? '' : 's'} fuera.`}`;
+    const ultimo = [...mem.ultimaConversacion].reverse().find(m => m.de === 'user' && m.texto.length > 6 && !m.texto.startsWith('/'));
+    if (ultimo && Math.random() < 0.7) texto += ` La última vez me dijiste "${ultimo.texto.slice(0, 40)}"... sigo pensando en eso.`;
+  }
+  ponerAnim('despertar', 1.4);
+  setTimeout(() => hablar(texto, 'feliz'), 800);
+  guardarMemoria();
+}
+
+/* Temporizador de rutinas (cada segundo) */
+setInterval(() => {
+  const silencio = (ahora() - cerebro.ultimaInteraccion) / 1000;
+  const visible = document.visibilityState === 'visible';
+  if (!cerebro.dormido && !fiesta.activa && silencio > SEGUNDOS_SIN_ACTIVIDAD_PARA_DORMIR) dormir(false);
+  else if (!cerebro.dormido && visible && silencio > SEGUNDOS_SILENCIO_PARA_LLAMAR && (ahora() - cerebro.ultimoProactivo) / 1000 > 120 && !cerebro.hablando) proactivo();
+  // Con más de un pedestal, a veces se muda por su cuenta.
+  if (pedestales.length > 1 && anim.estado === 'idle' && !cerebro.dormido && Math.random() < 0.02) viajar((pedestalActual + 1 + Math.floor(Math.random() * (pedestales.length - 1))) % pedestales.length);
+  actualizarBarras();
+}, 1000);
+setInterval(tickMinuto, 60e3);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { cerebro.ultimaInteraccion = ahora(); if (cerebro.dormido) despertar(); } });
+
+/* ------------------------------------------------------------
+   9. MODO FIESTA · Web Audio API
+   Detección de beat por energía en graves comparada con su media reciente.
+   ------------------------------------------------------------ */
+const fiesta = { activa: false, ctx: null, analizador: null, datos: null, historia: [], ultimoBeat: 0, pulso: 0, fuente: null, audio: null, flujo: null, temporizador: null, modo: null };
+document.querySelectorAll('[data-fiesta]').forEach(b => b.addEventListener('click', () => iniciarFiesta(b.dataset.fiesta)));
+$('#archivo-musica').addEventListener('change', async (e) => {
+  const f = e.target.files?.[0]; if (!f) return;
+  const audio = new Audio(URL.createObjectURL(f)); audio.loop = true; audio.crossOrigin = 'anonymous';
+  fiesta.audio = audio; fiesta.fuente = fiesta.ctx.createMediaElementSource(audio);
+  fiesta.fuente.connect(fiesta.analizador); fiesta.analizador.connect(fiesta.ctx.destination);
+  await audio.play(); arrancarFiesta('archivo');
+});
+async function iniciarFiesta(modo) {
+  dlgFiesta.close(); registrarInteraccion();
+  try {
+    fiesta.ctx = fiesta.ctx || new (window.AudioContext || window.webkitAudioContext)();
+    await fiesta.ctx.resume();
+    fiesta.analizador = fiesta.ctx.createAnalyser(); fiesta.analizador.fftSize = 512; fiesta.analizador.smoothingTimeConstant = 0.6;
+    fiesta.datos = new Uint8Array(fiesta.analizador.frequencyBinCount);
+    if (modo === 'archivo') { $('#archivo-musica').click(); return; }
+    if (modo === 'micro') {
+      fiesta.flujo = await navigator.mediaDevices.getUserMedia({ audio: true });
+      fiesta.fuente = fiesta.ctx.createMediaStreamSource(fiesta.flujo); fiesta.fuente.connect(fiesta.analizador); // sin conectar a destino: no hay eco
+      arrancarFiesta('micro'); return;
+    }
+    // Ritmo interno: un bombo sintetizado a 120 BPM, suficiente para bailar.
+    const latir = () => { if (!fiesta.activa) return; const o = fiesta.ctx.createOscillator(), g = fiesta.ctx.createGain(); const t0 = fiesta.ctx.currentTime;
+      o.frequency.setValueAtTime(150, t0); o.frequency.exponentialRampToValueAtTime(40, t0 + 0.25); g.gain.setValueAtTime(0.5, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+      o.connect(g); g.connect(fiesta.analizador); g.connect(fiesta.ctx.destination); o.start(t0); o.stop(t0 + 0.32); };
+    arrancarFiesta('interno'); fiesta.temporizador = setInterval(latir, 500); latir();
+  } catch (err) { nota(`[limitación] No pude iniciar el modo fiesta: ${err.message}. ¿Permiso de micrófono denegado?`); }
+}
+function arrancarFiesta(modo) {
+  fiesta.activa = true; fiesta.modo = modo; fiesta.historia = [];
+  $('#btn-fiesta').classList.add('activo'); ponerAnim('baile');
+  hablar(elegir(['¡FIESTA! Que tiemble el pedestal.', 'Siento el bajo en los polígonos. ¡Vamos!']), 'baile');
+}
+function detenerFiesta(silencio = false) {
+  fiesta.activa = false; $('#btn-fiesta').classList.remove('activo');
+  clearInterval(fiesta.temporizador);
+  if (fiesta.audio) { fiesta.audio.pause(); fiesta.audio = null; }
+  if (fiesta.flujo) { fiesta.flujo.getTracks().forEach(t => t.stop()); fiesta.flujo = null; }
+  try { fiesta.fuente?.disconnect(); } catch {}
+  fiesta.fuente = null; fiesta.pulso = 0;
+  if (anim.estado === 'baile') ponerAnim('idle');
+  if (!silencio) hablar(elegir(['Uf. Necesito un vaso de fotones.', 'Se acabó la fiesta. Mis píxeles sudan.']), 'feliz');
+}
+function analizarRitmo(t) {
+  if (!fiesta.activa || !fiesta.analizador) return;
+  fiesta.analizador.getByteFrequencyData(fiesta.datos);
+  let graves = 0; for (let i = 1; i < 12; i++) graves += fiesta.datos[i]; graves /= 11;
+  fiesta.historia.push(graves); if (fiesta.historia.length > 40) fiesta.historia.shift();
+  const media = fiesta.historia.reduce((a, b) => a + b, 0) / fiesta.historia.length;
+  if (graves > 30 && graves > media * 1.25 && t - fiesta.ultimoBeat > 0.22) {
+    fiesta.ultimoBeat = t; fiesta.pulso = 1;
+    if (Math.random() < 0.5) soltarSimbolo('nota', posicionCabeza());
+  }
+  fiesta.pulso = Math.max(0, fiesta.pulso - 0.06);
+  if (anim.estado === 'idle' || anim.estado === 'curioso') ponerAnim('baile');
+}
+
+/* ------------------------------------------------------------
+   10. BUCLE PRINCIPAL
+   ------------------------------------------------------------ */
+function redimensionar() {
+  const w = innerWidth, h = innerHeight;
+  camara.aspect = w / h; camara.updateProjectionMatrix();
+  renderer.setSize(w, h); composer.setSize(w, h); bloom.setSize(w, h);
+  // En escritorio el panel ocupa la derecha: desplazamos el encuadre para que la mascota quede centrada en el hueco libre.
+  controles.target.x = w > 820 ? -0.9 : 0;
+  distribuirPedestales();
+}
+window.addEventListener('resize', redimensionar); redimensionar();
+
+function cuadro() {
+  requestAnimationFrame(cuadro);
+  const dt = Math.min(0.05, reloj.getDelta()); const t = reloj.elapsedTime;
+  controles.update();
+  analizarRitmo(t);
+  animarMascota(t, dt);
+  animarEntorno(t, dt);
+  colocarBurbuja();
+  composer.render();
+}
+
+actualizarChips();
+saludoInicial();
+cuadro();
+
+// Pequeña API de depuración en consola (no es necesaria para usar la app).
+window.holopet = { memoria: () => mem, decir: procesarEntrada, accion: ejecutarAccion, anim, cerebro };
+</script>
+</body>
+</html>
