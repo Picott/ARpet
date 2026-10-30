@@ -1,0 +1,312 @@
+<title>Ménsula Alféizar</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Plano de taller: papel frío, tinta azul oscura, un solo acento verde-máquina. Dos columnas que colapsan a una. */
+:root{
+  --papel:#f2f4f6; --papel-2:#ffffff; --tinta:#1b2430; --tinta-suave:#5b6775; --linea:#cfd6de;
+  --acento:#1d7a5c; --acento-suave:#dff1e9; --aviso:#b4541b; --aviso-suave:#fbe9dc;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --papel:#12171c; --papel-2:#1a2027; --tinta:#e6ebf0; --tinta-suave:#9aa6b2; --linea:#2c353f; --acento:#4fc39a; --acento-suave:#163a2e; --aviso:#f0a062; --aviso-suave:#3a2516; color-scheme:dark } }
+:root[data-theme="dark"]{ --papel:#12171c; --papel-2:#1a2027; --tinta:#e6ebf0; --tinta-suave:#9aa6b2; --linea:#2c353f; --acento:#4fc39a; --acento-suave:#163a2e; --aviso:#f0a062; --aviso-suave:#3a2516; color-scheme:dark }
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:var(--sans);font-size:15px;line-height:1.55;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+main{max-width:980px;margin:0 auto}
+header.cab{padding:36px 0 18px;border-bottom:2px solid var(--tinta);display:flex;flex-wrap:wrap;gap:8px 24px;align-items:flex-end;justify-content:space-between}
+header.cab h1{margin:0;font-size:clamp(26px,4vw,38px);font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+header.cab .sub{color:var(--tinta-suave);max-width:60ch}
+.sello{font-family:var(--mono);font-size:12px;color:var(--tinta-suave);text-align:right;line-height:1.4}
+.sello b{color:var(--tinta);font-weight:500}
+h2{font-size:20px;margin:40px 0 10px;padding-top:10px;border-top:1px solid var(--linea);text-wrap:balance}
+h2 small{font-family:var(--mono);font-size:12px;color:var(--acento);margin-right:10px;font-weight:500}
+h3{font-size:16px;margin:22px 0 6px}
+p{max-width:70ch}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:20px 28px;align-items:start}
+@media (max-width:760px){.dos{grid-template-columns:1fr}}
+.dos>*{min-width:0}
+figure{margin:12px 0;background:var(--papel-2);border:1px solid var(--linea);border-radius:6px;padding:12px}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-size:13px;color:var(--tinta-suave);margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0 10px}
+th,td{text-align:left;vertical-align:top;padding:7px 9px;border-bottom:1px solid var(--linea)}
+th{font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--tinta-suave);text-transform:uppercase;letter-spacing:.06em}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px}
+.tabla-x{overflow-x:auto}
+code,.mono{font-family:var(--mono);font-size:13px}
+.nota{border-left:3px solid var(--acento);background:var(--acento-suave);padding:10px 14px;border-radius:0 6px 6px 0;margin:14px 0;max-width:72ch}
+.alerta{border-left-color:var(--aviso);background:var(--aviso-suave)}
+ol,ul{padding-left:22px;max-width:72ch}
+li{margin:4px 0}
+.calc{background:var(--papel-2);border:1px solid var(--linea);border-radius:6px;padding:16px}
+.calc .campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.calc label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--tinta-suave)}
+.calc input{font:inherit;font-family:var(--mono);padding:8px 10px;border:1px solid var(--linea);border-radius:4px;background:var(--papel);color:var(--tinta);width:100%}
+.calc input:focus{outline:2px solid var(--acento);outline-offset:1px}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:14px}
+.res div{border:1px solid var(--linea);border-radius:4px;padding:10px 12px}
+.res .k{font-size:12px;color:var(--tinta-suave)}
+.res .v{font-family:var(--mono);font-size:18px;font-variant-numeric:tabular-nums}
+.res .e{font-size:12px;margin-top:2px}
+.ok{color:var(--acento)} .mal{color:var(--aviso)}
+.visor{position:relative;background:var(--papel-2);border:1px solid var(--linea);border-radius:6px;overflow:hidden}
+.visor canvas{display:block;width:100%;height:420px;touch-action:none}
+.visor .botones{position:absolute;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap}
+.btn{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--linea);background:var(--papel);color:var(--tinta);border-radius:4px;cursor:pointer}
+.btn[aria-pressed="true"]{border-color:var(--acento);color:var(--acento)}
+.btn:focus-visible{outline:2px solid var(--acento)}
+.visor .pie{position:absolute;right:10px;bottom:8px;font-family:var(--mono);font-size:11px;color:var(--tinta-suave)}
+.plano{background:#fff;border:1px solid var(--linea);border-radius:6px;padding:8px}
+.plano img{width:100%;height:auto;display:block}
+.chk{list-style:none;padding:0}
+.chk li{display:flex;gap:10px;align-items:flex-start}
+.chk li::before{content:"";width:14px;height:14px;border:1.5px solid var(--tinta-suave);border-radius:3px;flex:none;margin-top:5px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<main>
+<header class="cab">
+  <div>
+    <h1>Ménsula Alféizar</h1>
+    <div class="sub">Repisa para gatos que se cuelga de la ventana sin taladrar ni ventosas: engancha el labio interior del marco de aluminio y se apoya en la pared. Ajustable en profundidad de alféizar, altura de labio y nivel.</div>
+  </div>
+  <div class="sello">rev. <b>A · prototipo 1</b><br>carga de diseño <b>29 kgf</b><br>cuerpo <b>contrachapado 18 mm</b><br>anclaje <b>fleje acero 50×3</b></div>
+</header>
+
+<h2><small>01</small>Cómo se sostiene</h2>
+<div class="dos">
+  <div>
+    <p>El gato carga el brazo en voladizo. Ese momento quiere levantar la lengüeta del alféizar y clavar la pata contra la pared. Dos cosas lo equilibran:</p>
+    <ul>
+      <li><b>El pie contra la pared</b>, a una altura <span class="mono">h</span> bajo el alféizar. Cuanto más baja la pata, menor la fuerza. Con <span class="mono">h = 320 mm</span> y voladizo <span class="mono">L = 320 mm</span>, el empuje total es igual al peso que carga.</li>
+      <li><b>El diente del fleje</b>, que entra en el canal detrás del labio interior del marco de aluminio. Es lo único que impide que todo el conjunto deslice hacia la habitación. Sin ese diente, ninguna repisa de alféizar con apoyo en pared se sostiene: el alféizar y la pared solo pueden empujar hacia el cuarto.</li>
+    </ul>
+    <p>La goma bajo la lengüeta añade fricción que descarga al diente, pero no se cuenta en el cálculo: el diseño se sostiene aunque el alféizar esté pulido.</p>
+    <div class="nota">Regla de bolsillo: <span class="mono">N = W · L / h</span>. Empuje en la pared y tiro en el gancho son la misma fuerza <span class="mono">N</span>. Un gato de 6 kg que salta genera picos de unos 18 kgf; con margen 1,6 la carga de diseño queda en 29 kgf.</div>
+  </div>
+  <figure>
+    <svg viewBox="0 0 420 360" role="img" aria-label="Vista lateral de la ménsula con fuerzas">
+      <defs><marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--acento)"/></marker>
+      <marker id="fl2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--aviso)"/></marker></defs>
+      <!-- pared y alféizar -->
+      <rect x="20" y="20" width="60" height="320" fill="var(--linea)" opacity=".55"/>
+      <rect x="20" y="20" width="60" height="90" fill="var(--linea)"/>
+      <rect x="0" y="100" width="90" height="12" fill="var(--tinta-suave)" opacity=".8"/>
+      <!-- marco de aluminio con labio -->
+      <rect x="0" y="80" width="42" height="20" fill="none" stroke="var(--tinta)" stroke-width="1.5"/>
+      <rect x="34" y="80" width="8" height="20" fill="var(--tinta)" opacity=".25"/>
+      <text x="4" y="76" font-size="9" fill="var(--tinta-suave)">marco aluminio</text>
+      <text x="22" y="124" font-size="9" fill="var(--tinta-suave)">alféizar</text>
+      <text x="58" y="300" font-size="9" fill="var(--tinta-suave)" transform="rotate(-90 58 300)">pared</text>
+      <!-- cuerpo -->
+      <g fill="none" stroke="var(--tinta)" stroke-width="2" stroke-linejoin="round">
+        <path d="M60 96 L60 86 L380 86 L380 110 L130 110 L130 300 L100 300 L100 96 Z"/>
+        <path d="M352 110 L130 280" />
+        <path d="M60 86 L60 96 L100 96" />
+      </g>
+      <!-- fleje y diente -->
+      <path d="M42 84 L42 96 M42 84 L150 84" stroke="var(--aviso)" stroke-width="3" fill="none"/>
+      <text x="150" y="80" font-size="9" fill="var(--aviso)">fleje 50×3 (ajustable)</text>
+      <text x="46" y="106" font-size="8" fill="var(--aviso)">diente</text>
+      <!-- tabla y gato -->
+      <rect x="70" y="74" width="320" height="12" fill="var(--acento-suave)" stroke="var(--acento)"/>
+      <!-- pie -->
+      <rect x="80" y="270" width="20" height="30" fill="var(--aviso)" opacity=".8"/>
+      <text x="104" y="312" font-size="9" fill="var(--tinta-suave)">pie regulable M8</text>
+      <!-- fuerzas -->
+      <line x1="330" y1="40" x2="330" y2="72" stroke="var(--acento)" stroke-width="2" marker-end="url(#fl)"/>
+      <text x="336" y="52" font-size="11" fill="var(--acento)" font-family="var(--mono)">W</text>
+      <line x1="140" y1="285" x2="92" y2="285" stroke="var(--acento)" stroke-width="2" marker-end="url(#fl)"/>
+      <text x="146" y="289" font-size="11" fill="var(--acento)" font-family="var(--mono)">N (pie)</text>
+      <line x1="150" y1="60" x2="48" y2="60" stroke="var(--aviso)" stroke-width="2" marker-end="url(#fl2)"/>
+      <text x="154" y="64" font-size="11" fill="var(--aviso)" font-family="var(--mono)">N (gancho)</text>
+      <!-- cotas -->
+      <line x1="100" y1="330" x2="380" y2="330" stroke="var(--tinta-suave)" stroke-width="1"/>
+      <line x1="100" y1="325" x2="100" y2="335" stroke="var(--tinta-suave)"/><line x1="380" y1="325" x2="380" y2="335" stroke="var(--tinta-suave)"/>
+      <text x="230" y="345" font-size="10" fill="var(--tinta-suave)" text-anchor="middle" font-family="var(--mono)">L = voladizo</text>
+      <line x1="400" y1="110" x2="400" y2="285" stroke="var(--tinta-suave)" stroke-width="1"/>
+      <line x1="395" y1="110" x2="405" y2="110" stroke="var(--tinta-suave)"/><line x1="395" y1="285" x2="405" y2="285" stroke="var(--tinta-suave)"/>
+      <text x="408" y="200" font-size="10" fill="var(--tinta-suave)" font-family="var(--mono)" transform="rotate(90 408 200)">h = altura del pie</text>
+    </svg>
+    <figcaption>Vista lateral. El peso <span class="mono">W</span> del gato se equilibra con el empuje del pie contra la pared y el tiro del diente en el labio del marco. Giro alrededor de la arista del alféizar.</figcaption>
+  </figure>
+</div>
+
+<h2><small>02</small>Calculadora</h2>
+<div class="calc">
+  <div class="campos">
+    <label>Peso del gato (kg)<input id="c-peso" type="number" value="6" min="2" max="15" step="0.5"></label>
+    <label>Voladizo L (mm)<input id="c-L" type="number" value="320" min="200" max="450" step="10"></label>
+    <label>Altura del pie h (mm)<input id="c-h" type="number" value="320" min="150" max="500" step="10"></label>
+    <label>Factor dinámico × seguridad<input id="c-fs" type="number" value="4.8" min="2" max="8" step="0.1"></label>
+  </div>
+  <div class="res" id="c-res"></div>
+  <p style="font-size:13px;color:var(--tinta-suave);margin:12px 0 0">Límites usados: fleje acero 150 MPa, labio de aluminio 6063 (1,4 mm) 100 MPa, contrachapado de abedul 30 MPa, pared de yeso 3 kgf/cm². Son valores conservadores para prototipo, no una norma.</p>
+</div>
+
+<h2><small>03</small>Qué se ajusta y cuánto</h2>
+<div class="tabla-x"><table>
+  <tr><th>Variable de la ventana</th><th>Cómo se ajusta</th><th class="n">Rango</th></tr>
+  <tr><td>Profundidad del alféizar (de la pared al labio del marco)</td><td>El fleje desliza por una ranura de 100 mm bajo dos palomillas M6; la lengüeta del cuerpo aporta otros 30 mm</td><td class="n">30 – 190 mm</td></tr>
+  <tr><td>Altura del labio del marco sobre el alféizar</td><td>El fleje va en un rebaje a 40 mm; el diente de 25 mm baja detrás del labio</td><td class="n">≤ 40 mm</td></tr>
+  <tr><td>Canal detrás del labio</td><td>Diente de 3 mm de espesor, 50 mm de ancho; se coloca donde la hoja corredera no pasa</td><td class="n">≥ 5 mm de hueco</td></tr>
+  <tr><td>Pared no vertical, zócalo o irregularidad</td><td>Pie con tornillo M8 en tuerca de golpe: cambia la separación y nivela el brazo</td><td class="n">10 – 25 mm</td></tr>
+  <tr><td>Ancho de la ventana</td><td>Dos ménsulas en cualquier posición bajo la tabla; tabla de 600 mm estándar, 900 opcional</td><td class="n">400 – 500 mm entre ménsulas</td></tr>
+  <tr><td>Nivel fino</td><td>Goma de 3 mm bajo la lengüeta más el pie regulable</td><td class="n">± 1°</td></tr>
+</table></div>
+<div class="nota alerta">Lo que no cubre esta revisión: alféizares que sobresalen de la pared más de 10 mm (la pata no apoya) y ventanas de madera o PVC sin labio interior. Para esos casos la revisión B lleva una mordaza bajo el vuelo del alféizar en vez del diente. Mide tu ventana con la lista del final antes de cortar nada.</div>
+
+<h2><small>04</small>Piezas</h2>
+<div class="visor" id="visor">
+  <div class="botones" role="group" aria-label="Pieza a mostrar">
+    <button class="btn" data-pieza="cuerpo" aria-pressed="true">Cuerpo</button>
+    <button class="btn" data-pieza="pie" aria-pressed="false">Pie de pared</button>
+    <button class="btn" data-pieza="mordaza" aria-pressed="false">Mordaza del fleje</button>
+  </div>
+  <canvas id="lienzo3d" aria-label="Modelo 3D de la pieza"></canvas>
+  <div class="pie" id="visor-pie">cargando modelo…</div>
+</div>
+<p style="font-size:13px;color:var(--tinta-suave)">Arrastra para girar, rueda o pellizco para acercar. Los STL y las plantillas SVG están en la carpeta <code>diseno/salida</code> del repositorio; el generador <code>diseno/mensula.py</code> los rehace con otras medidas.</p>
+
+<div class="dos">
+  <div>
+    <h3>Cuerpo de la ménsula (×2)</h3>
+    <p>Contrachapado de abedul de 18 mm cortado con la plantilla 1:1 (sierra de calar o CNC). Brazo de 320 mm con rebaje de 3 mm para el fleje, lengüeta de 30 mm sobre el alféizar, pata de 320 mm separada 10 mm de la pared y tirante diagonal. Dos taladros verticales Ø6,5 para el fleje y uno horizontal Ø8,5 para la tuerca de golpe del pie. También se puede imprimir en PETG en dos mitades con cola de milano, pero el contrachapado es más barato y más rígido.</p>
+    <h3>Fleje-gancho (×2)</h3>
+    <p>Pletina de acero de 50×3 mm, 218 mm de largo, con ranura de 100×6,5 y doblez a 90° que forma el diente de 25 mm. Lo corta y dobla cualquier taller de cerrajería en minutos. Pintado o galvanizado.</p>
+    <h3>Pie de pared (×2, impreso)</h3>
+    <p>Disco Ø44×14 mm en PETG con alojamiento hexagonal para la cabeza de un tornillo M8×50 y cazoleta para un disco de goma de 3 mm. El tornillo rosca en una tuerca de golpe M8 clavada en la pata; girándolo se regula la separación y se nivela.</p>
+    <h3>Mordaza del fleje (×2, impresa)</h3>
+    <p>Barra de 100×46×6 mm que reparte el apriete de las dos palomillas M6 sobre la ranura del fleje para que no se marque ni deslice.</p>
+    <h3>Tabla y colchoneta</h3>
+    <p>Contrachapado de 15 mm, 600×320 mm, cantos redondeados, atornillada desde arriba a los brazos con 4 tornillos de 4×40. Colchoneta de 600×320 con funda lavable y velcro en las cuatro esquinas.</p>
+  </div>
+  <div>
+    <div class="plano"><img src="{{SVG_PERFIL}}" alt="Plantilla 1:1 del perfil de la ménsula"></div>
+    <figcaption style="font-size:13px;color:var(--tinta-suave);margin:6px 0 14px">Plantilla del perfil (archivo <code>mensula_perfil_1a1.svg</code>, imprimir al 100 %).</figcaption>
+    <div class="plano"><img src="{{SVG_FLEJE}}" alt="Desarrollo plano del fleje-gancho"></div>
+    <figcaption style="font-size:13px;color:var(--tinta-suave);margin:6px 0">Desarrollo del fleje (archivo <code>fleje_gancho_1a1.svg</code>).</figcaption>
+  </div>
+</div>
+
+<h2><small>05</small>Lista de materiales del prototipo</h2>
+<div class="tabla-x"><table>
+  <tr><th>Pieza</th><th>Material y medida</th><th class="n">Cant.</th><th class="n">USD aprox.</th></tr>
+  <tr><td>Cuerpo de ménsula</td><td>Contrachapado abedul 18 mm, retal 400×400</td><td class="n">2</td><td class="n">8</td></tr>
+  <tr><td>Tabla</td><td>Contrachapado 15 mm, 600×320</td><td class="n">1</td><td class="n">6</td></tr>
+  <tr><td>Fleje-gancho</td><td>Pletina acero 50×3, 218 mm, cortada, ranurada y doblada</td><td class="n">2</td><td class="n">6</td></tr>
+  <tr><td>Pie de pared</td><td>PETG impreso, 16 cm³, más disco de goma Ø40×3</td><td class="n">2</td><td class="n">2</td></tr>
+  <tr><td>Mordaza del fleje</td><td>PETG impreso, 27 cm³</td><td class="n">2</td><td class="n">1.5</td></tr>
+  <tr><td>Tornillería</td><td>4 M6×60 con palomilla y arandela, 2 M8×50 con tuerca de golpe y contratuerca, 4 tornillos 4×40</td><td class="n">1 lote</td><td class="n">5</td></tr>
+  <tr><td>Goma</td><td>Tira EPDM 3 mm bajo la lengüeta y bajo la tabla</td><td class="n">1</td><td class="n">2</td></tr>
+  <tr><td>Colchoneta</td><td>Espuma 30 mm con funda lavable y velcro</td><td class="n">1</td><td class="n">10</td></tr>
+  <tr><td>Acabado</td><td>Aceite o barniz al agua, lija</td><td class="n">1</td><td class="n">3</td></tr>
+  <tr><td><b>Total prototipo</b></td><td></td><td></td><td class="n"><b>≈ 44</b></td></tr>
+</table></div>
+<p>En producción (corte CNC en lote, fleje troquelado, pies inyectados) el coste de materiales cae a 18 a 22 USD, lo que permite un precio de venta entre 60 y 80 USD. Las camas de ventana con ventosas se venden entre 25 y 45 USD, así que el argumento tiene que ser seguridad y madera, no precio.</p>
+
+<h2><small>06</small>Montaje</h2>
+<ol>
+  <li>Imprime la plantilla al 100 %, pégala al contrachapado y corta los dos cuerpos. Lija cantos y taladra los tres agujeros de cada uno.</li>
+  <li>Clava la tuerca de golpe M8 en la cara de la pata que mira a la pared. Rosca el tornillo M8 con el pie impreso y la contratuerca.</li>
+  <li>Pega la tira de goma bajo la lengüeta. Coloca el fleje en el rebaje, pasa los M6 desde abajo, pon la mordaza encima y las palomillas sin apretar.</li>
+  <li>Presenta cada ménsula en la ventana: el diente entra en el canal detrás del labio, la lengüeta apoya en el alféizar, el pie toca la pared. Desliza el fleje hasta que el diente quede pegado al labio y aprieta las palomillas.</li>
+  <li>Gira el tornillo del pie hasta que el brazo quede horizontal (nivel de burbuja encima). Bloquea con la contratuerca.</li>
+  <li>Atornilla la tabla desde arriba a los dos brazos, separados 450 mm. Pon la colchoneta. Carga con tu propio peso de la mano unos 20 kg en la punta antes de dejar subir al gato.</li>
+</ol>
+
+<h2><small>07</small>Protocolo de pruebas antes de vender una sola unidad</h2>
+<div class="tabla-x"><table>
+  <tr><th>Prueba</th><th>Cómo</th><th>Pasa si</th></tr>
+  <tr><td>Carga estática</td><td>Saco de 30 kg en el borde exterior de la tabla durante 24 h</td><td>Nada se afloja, flecha en la punta menor de 5 mm y vuelve a cero</td></tr>
+  <tr><td>Carga dinámica</td><td>Dejar caer 6 kg desde 40 cm sobre la punta, 50 veces</td><td>Diente sin deformar, palomillas sin perder apriete, labio del marco sin marca</td></tr>
+  <tr><td>Deslizamiento</td><td>Empujar la tabla hacia la habitación con 15 kgf</td><td>Desplazamiento cero: el diente trabaja</td></tr>
+  <tr><td>Pared</td><td>Retirar tras 2 semanas de uso</td><td>Sin marca permanente en pintura mate con el disco de goma</td></tr>
+  <tr><td>Compatibilidad</td><td>Montar en 3 ventanas distintas de aluminio corredera</td><td>Encaja con el rango de ajuste sin modificar piezas; la hoja corredera no roza el diente</td></tr>
+  <tr><td>Uso real</td><td>Dos gatos durante un mes</td><td>Suben por sí solos, cero incidentes, cero reajustes</td></tr>
+</table></div>
+
+<h2><small>08</small>Medidas que necesito de tu ventana</h2>
+<div class="dos">
+  <ul class="chk">
+    <li>Profundidad del alféizar: de la cara de la pared interior al labio del marco de aluminio.</li>
+    <li>Altura del labio: cuánto sobresale el marco por encima del alféizar.</li>
+    <li>Hueco del canal: anchura del hueco justo detrás del labio y si la hoja corredera pasa por ahí.</li>
+    <li>Vuelo del alféizar: si la piedra o el mármol sobresale de la pared y cuánto.</li>
+    <li>Pared bajo la ventana: material, si hay zócalo o tubería a menos de 35 cm.</li>
+    <li>Ancho libre de la ventana y a qué altura del suelo está el alféizar.</li>
+    <li>Peso de tus gatos y si saltan desde el suelo o desde un mueble.</li>
+  </ul>
+  <div class="nota">Con esas siete medidas fijo los parámetros del generador, regenero STL y plantillas, y pasamos a cortar. Si el alféizar sobresale o no hay labio, cambio el anclaje a la revisión B (mordaza) antes de que compres material.</div>
+</div>
+
+</main>
+
+<script type="module">
+// Visor 3D de las piezas: Three.js por jsDelivr (+esm), STL incrustados en base64 para no depender de archivos externos.
+const STL = { cuerpo: "{{STL_CUERPO}}", pie: "{{STL_PIE}}", mordaza: "{{STL_MORDAZA}}" };
+const NOMBRES = { cuerpo: 'Cuerpo · 350×363×18 mm · contrachapado', pie: 'Pie de pared · Ø44×14 mm · PETG', mordaza: 'Mordaza · 100×46×6 mm · PETG' };
+const pieEl = document.getElementById('visor-pie');
+try {
+  const CDN = 'https://cdn.jsdelivr.net/npm/three@0.160.0';
+  const [THREE, { OrbitControls }, { STLLoader }] = await Promise.all([
+    import(`${CDN}/+esm`), import(`${CDN}/examples/jsm/controls/OrbitControls.js/+esm`), import(`${CDN}/examples/jsm/loaders/STLLoader.js/+esm`) ]);
+  const lienzo = document.getElementById('lienzo3d');
+  const renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const escena = new THREE.Scene();
+  const camara = new THREE.PerspectiveCamera(38, 1, 1, 5000);
+  const controles = new OrbitControls(camara, lienzo); controles.enableDamping = true; controles.enablePan = false;
+  escena.add(new THREE.HemisphereLight(0xffffff, 0x667788, 1.4));
+  const luz = new THREE.DirectionalLight(0xffffff, 1.6); luz.position.set(1, 2, 1.5); escena.add(luz);
+  const oscuro = () => matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme !== 'light' || document.documentElement.dataset.theme === 'dark';
+  const materiales = { cuerpo: new THREE.MeshStandardMaterial({ color: 0xc9a470, roughness: 0.8, flatShading: true }), pie: new THREE.MeshStandardMaterial({ color: 0x3f8f6e, roughness: 0.5, flatShading: true }), mordaza: new THREE.MeshStandardMaterial({ color: 0x3f8f6e, roughness: 0.5, flatShading: true }) };
+  const rejilla = new THREE.GridHelper(600, 24, 0x8899aa, 0x8899aa); rejilla.material.opacity = oscuro() ? 0.25 : 0.35; rejilla.material.transparent = true; escena.add(rejilla);
+  const cargador = new STLLoader(); let actual = null;
+  const b64aBuffer = (b64) => { const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; };
+  function mostrar(clave) {
+    if (actual) { escena.remove(actual); actual.geometry.dispose(); }
+    const geo = cargador.parse(b64aBuffer(STL[clave])); geo.computeBoundingBox(); geo.computeVertexNormals();
+    const centro = geo.boundingBox.getCenter(new THREE.Vector3()); geo.translate(-centro.x, -centro.y, -centro.z);
+    const tam = geo.boundingBox.getSize(new THREE.Vector3()).length();
+    actual = new THREE.Mesh(geo, materiales[clave]);
+    if (clave === 'cuerpo') actual.rotation.set(0, 0, 0); else actual.rotation.x = -Math.PI / 2;
+    actual.position.y = clave === 'cuerpo' ? 0 : 7;
+    escena.add(actual);
+    rejilla.position.y = -geo.boundingBox.getSize(new THREE.Vector3()).y / 2 - (clave === 'cuerpo' ? 2 : -5);
+    rejilla.scale.setScalar(clave === 'cuerpo' ? 1 : 0.2);
+    camara.position.set(tam * 0.9, tam * 0.55, tam * 1.1); controles.target.set(0, 0, 0); controles.minDistance = tam * 0.4; controles.maxDistance = tam * 3; controles.update();
+    pieEl.textContent = NOMBRES[clave];
+    document.querySelectorAll('[data-pieza]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.pieza === clave)));
+  }
+  document.querySelectorAll('[data-pieza]').forEach(b => b.addEventListener('click', () => mostrar(b.dataset.pieza)));
+  function ajustar() { const w = lienzo.clientWidth, h = lienzo.clientHeight; renderer.setSize(w, h, false); camara.aspect = w / h; camara.updateProjectionMatrix(); }
+  new ResizeObserver(ajustar).observe(lienzo); ajustar();
+  mostrar('cuerpo');
+  (function cuadro() { requestAnimationFrame(cuadro); controles.update(); renderer.render(escena, camara); })();
+} catch (err) { pieEl.textContent = 'No se pudo cargar el visor 3D (' + err.message + '). Los STL están en el repositorio.'; }
+</script>
+<script>
+// Calculadora: réplica de calculo() de diseno/mensula.py
+(function () {
+  const g = 9.81, $ = (id) => document.getElementById(id);
+  const F = { fleje_ancho: 50, fleje_espesor: 3, diente: 25, labio_espesor: 1.4, labio_brazo: 8, pie_d: 44, espesor: 18, brazo_alto: 43 };
+  function calcular() {
+    const peso = +$('c-peso').value || 0, L = +$('c-L').value || 1, h = +$('c-h').value || 1, fs = +$('c-fs').value || 1;
+    const W = peso * fs, N = W * L / h, Fg = N / 2 * g;
+    const sFleje = Fg * F.diente * 0.6 / (F.fleje_ancho * F.fleje_espesor ** 2 / 6);
+    const sLabio = Fg * F.labio_brazo / (F.fleje_ancho * F.labio_espesor ** 2 / 6);
+    const pPie = (N / 2) / (Math.PI * (F.pie_d / 2) ** 2 / 100);
+    const sBrazo = (W / 2) * g * L / (F.espesor * F.brazo_alto ** 2 / 6);
+    const fila = (k, v, u, ok, lim) => `<div><div class="k">${k}</div><div class="v">${v} <span style="font-size:12px">${u}</span></div><div class="e ${ok ? 'ok' : 'mal'}">${ok ? 'cumple' : 'no cumple'} · límite ${lim}</div></div>`;
+    $('c-res').innerHTML =
+      `<div><div class="k">Carga de diseño W</div><div class="v">${W.toFixed(1)} <span style="font-size:12px">kgf</span></div><div class="e">${peso} kg × ${fs}</div></div>` +
+      `<div><div class="k">Empuje pared = tiro gancho N</div><div class="v">${N.toFixed(1)} <span style="font-size:12px">kgf</span></div><div class="e">${(N / 2).toFixed(1)} kgf por ménsula</div></div>` +
+      fila('Tensión en el diente del fleje', sFleje.toFixed(0), 'MPa', sFleje < 150, '150 MPa') +
+      fila('Tensión en el labio de aluminio', sLabio.toFixed(0), 'MPa', sLabio < 100, '100 MPa') +
+      fila('Presión del pie en la pared', pPie.toFixed(2), 'kgf/cm²', pPie < 3, '3 kgf/cm²') +
+      fila('Tensión en el brazo de madera', sBrazo.toFixed(1), 'MPa', sBrazo < 30, '30 MPa');
+  }
+  ['c-peso', 'c-L', 'c-h', 'c-fs'].forEach(id => $(id).addEventListener('input', calcular)); calcular();
+})();
+</script>

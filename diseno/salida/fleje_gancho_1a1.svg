@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="248.0mm" height="100.0mm" viewBox="0 0 248.0 100.0" font-family="sans-serif"><title>Fleje-gancho · desarrollo 1:1</title><rect width="248.0" height="100.0" fill="white"/>
+<rect x="15" y="15" width="218.0" height="50.0" fill="none" stroke="black" stroke-width="0.4"/>
+<rect x="45" y="36.75" width="100.0" height="6.5" rx="3.25" fill="none" stroke="black" stroke-width="0.4"/>
+<line x1="205.0" y1="10" x2="205.0" y2="70.0" stroke="black" stroke-width="0.3" stroke-dasharray="3 2"/>
+<text x="187.0" y="76.0" font-size="4">doblar 90° hacia abajo</text>
+<text x="207.0" y="13" font-size="4">diente 25</text>
+<text x="15" y="83.0" font-size="5">Pletina acero 50×3 mm · largo total 218 mm · ranura 100×6.5 · 2 unidades · desbarbar y pintar o galvanizar</text>
+</svg>

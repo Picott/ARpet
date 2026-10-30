@@ -1,0 +1,318 @@
+{
+ "parametros": {
+  "espesor": 18.0,
+  "brazo_largo": 320.0,
+  "brazo_alto": 43.0,
+  "rebaje_fleje": 3.0,
+  "rebaje_hasta": 100.0,
+  "lengueta": 30.0,
+  "holgura_alfeizar": 3.0,
+  "pata_alto": 320.0,
+  "pata_ancho": 40.0,
+  "pata_separacion": 10.0,
+  "tirante_ancho": 35.0,
+  "radio_redondeo": 4.0,
+  "fleje_ancho": 50.0,
+  "fleje_espesor": 3.0,
+  "diente": 25.0,
+  "fleje_ranura": 100.0,
+  "fleje_recorrido": 190.0,
+  "tornillos_fleje_x": [
+   20.0,
+   80.0
+  ],
+  "tornillo_fleje_d": 6.5,
+  "pie_diametro": 44.0,
+  "pie_alto": 14.0,
+  "pie_y": -300.0,
+  "tornillo_pie_d": 8.5,
+  "tabla_fondo": 320.0,
+  "tabla_largo": 600.0,
+  "tabla_espesor": 15.0,
+  "separacion_mensulas": 450.0,
+  "peso_gato": 6.0,
+  "factor_dinamico": 3.0,
+  "coef_seguridad": 1.6,
+  "labio_espesor": 1.4,
+  "labio_brazo": 8.0,
+  "carga_diseno": 28.8
+ },
+ "calculo": {
+  "L": 320.0,
+  "h": 300.0,
+  "W": 28.8,
+  "N": 30.72,
+  "por_mensula": {
+   "W": 14.4,
+   "N": 15.36
+  },
+  "F_gancho_N": 150.6816,
+  "sigma_fleje_MPa": 30.13632,
+  "sigma_labio_MPa": 73.80323265306123,
+  "tau_tornillo_MPa": 2.6646357192217485,
+  "presion_pie_kgf_cm2": 1.010173523095666,
+  "sigma_brazo_MPa": 8.149356408869659,
+  "friccion_lengueta_kgf": 17.28,
+  "N_neto_kgf": 13.439999999999998,
+  "ok": {
+   "fleje": true,
+   "labio": true,
+   "tornillo": true,
+   "pie": true,
+   "brazo": true
+  }
+ },
+ "piezas": {
+  "mensula_cuerpo.stl": {
+   "volumen_cm3": 696.6,
+   "caja_mm": [
+    350.0,
+    363.0,
+    18.0
+   ]
+  },
+  "pie_pared.stl": {
+   "volumen_cm3": 16.2,
+   "caja_mm": [
+    44.0,
+    44.0,
+    14.0
+   ]
+  },
+  "mordaza_fleje.stl": {
+   "volumen_cm3": 27.2,
+   "caja_mm": [
+    100.0,
+    46.0,
+    6.0
+   ]
+  }
+ },
+ "calculo_tabla": [
+  {
+   "L": 250,
+   "h": 250,
+   "W": 28.8,
+   "N": 28.8,
+   "por_mensula": {
+    "W": 14.4,
+    "N": 14.4
+   },
+   "F_gancho_N": 141.264,
+   "sigma_fleje_MPa": 28.2528,
+   "sigma_labio_MPa": 69.19053061224491,
+   "tau_tornillo_MPa": 2.4980959867703896,
+   "presion_pie_kgf_cm2": 0.9470376779021871,
+   "sigma_brazo_MPa": 6.366684694429421,
+   "friccion_lengueta_kgf": 17.28,
+   "N_neto_kgf": 11.52,
+   "ok": {
+    "fleje": true,
+    "labio": true,
+    "tornillo": true,
+    "pie": true,
+    "brazo": true
+   }
+  },
+  {
+   "L": 250,
+   "h": 320,
+   "W": 28.8,
+   "N": 22.5,
+   "por_mensula": {
+    "W": 14.4,
+    "N": 11.25
+   },
+   "F_gancho_N": 110.36250000000001,
+   "sigma_fleje_MPa": 22.0725,
+   "sigma_labio_MPa": 54.05510204081634,
+   "tau_tornillo_MPa": 1.951637489664367,
+   "presion_pie_kgf_cm2": 0.7398731858610836,
+   "sigma_brazo_MPa": 6.366684694429421,
+   "friccion_lengueta_kgf": 17.28,
+   "N_neto_kgf": 5.219999999999999,
+   "ok": {
+    "fleje": true,
+    "labio": true,
+    "tornillo": true,
+    "pie": true,
+    "brazo": true
+   }
+  },
+  {
+   "L": 250,
+   "h": 400,
+   "W": 28.8,
+   "N": 18.0,
+   "por_mensula": {
+    "W": 14.4,
+    "N": 9.0
+   },
+   "F_gancho_N": 88.29,
+   "sigma_fleje_MPa": 17.658,
+   "sigma_labio_MPa": 43.24408163265307,
+   "tau_tornillo_MPa": 1.5613099917314934,
+   "presion_pie_kgf_cm2": 0.5918985486888669,
+   "sigma_brazo_MPa": 6.366684694429421,
+   "friccion_lengueta_kgf": 17.28,
+   "N_neto_kgf": 0.7199999999999989,
+   "ok": {
+    "fleje": true,
+    "labio": true,
+    "tornillo": true,
+    "pie": true,
+    "brazo": true
+   }
+  },
+  {
+   "L": 320,
+   "h": 250,
+   "W": 28.8,
+   "N": 36.864,
+   "por_mensula": {
+    "W": 14.4,
+    "N": 18.432
+   },
+   "F_gancho_N": 180.81792,
+   "sigma_fleje_MPa": 36.163584,
+   "sigma_labio_MPa": 88.56387918367346,
+   "tau_tornillo_MPa": 3.197562863066098,
+   "presion_pie_kgf_cm2": 1.2122082277147994,
+   "sigma_brazo_MPa": 8.149356408869659,
+   "friccion_lengueta_kgf": 17.28,
+   "N_neto_kgf": 19.583999999999996,
+   "ok": {
+    "fleje": true,
+    "labio": true,
+    "tornillo": true,
+    "pie": true,
+    "brazo": true
+   }
+  },
+  {
+   "L": 320,
+   "h": 320,
+   "W": 28.8,
+   "N": 28.8,
+   "por_mensula": {
+    "W": 14.4,
+    "N": 14.4
+   },
+   "F_gancho_N": 141.264,
+   "sigma_fleje_MPa": 28.2528,
+   "sigma_labio_MPa": 69.19053061224491,
+   "tau_tornillo_MPa": 2.4980959867703896,
+   "presion_pie_kgf_cm2": 0.9470376779021871,
+   "sigma_brazo_MPa": 8.149356408869659,
+   "friccion_lengueta_kgf": 17.28,
+   "N_neto_kgf": 11.52,
+   "ok": {
+    "fleje": true,
+    "labio": true,
+    "tornillo": true,
+    "pie": true,
+    "brazo": true
+   }
+  },
+  {
+   "L": 320,
+   "h": 400,
+   "W": 28.8,
+   "N": 23.04,
+   "por_mensula": {
+    "W": 14.4,
+    "N": 11.52
+   },
+   "F_gancho_N": 113.0112,
+   "sigma_fleje_MPa": 22.602240000000002,
+   "sigma_labio_MPa": 55.35242448979592,
+   "tau_tornillo_MPa": 1.9984767894163116,
+   "presion_pie_kgf_cm2": 0.7576301423217496,
+   "sigma_brazo_MPa": 8.149356408869659,
+   "friccion_lengueta_kgf": 17.28,
+   "N_neto_kgf": 5.759999999999998,
+   "ok": {
+    "fleje": true,
+    "labio": true,
+    "tornillo": true,
+    "pie": true,
+    "brazo": true
+   }
+  },
+  {
+   "L": 350,
+   "h": 250,
+   "W": 28.8,
+   "N": 40.32,
+   "por_mensula": {
+    "W": 14.4,
+    "N": 20.16
+   },
+   "F_gancho_N": 197.76960000000003,
+   "sigma_fleje_MPa": 39.553920000000005,
+   "sigma_labio_MPa": 96.86674285714288,
+   "tau_tornillo_MPa": 3.4973343814785456,
+   "presion_pie_kgf_cm2": 1.3258527490630618,
+   "sigma_brazo_MPa": 8.91335857220119,
+   "friccion_lengueta_kgf": 17.28,
+   "N_neto_kgf": 23.04,
+   "ok": {
+    "fleje": true,
+    "labio": true,
+    "tornillo": true,
+    "pie": true,
+    "brazo": true
+   }
+  },
+  {
+   "L": 350,
+   "h": 320,
+   "W": 28.8,
+   "N": 31.5,
+   "por_mensula": {
+    "W": 14.4,
+    "N": 15.75
+   },
+   "F_gancho_N": 154.50750000000002,
+   "sigma_fleje_MPa": 30.901500000000002,
+   "sigma_labio_MPa": 75.67714285714287,
+   "tau_tornillo_MPa": 2.7322924855301136,
+   "presion_pie_kgf_cm2": 1.035822460205517,
+   "sigma_brazo_MPa": 8.91335857220119,
+   "friccion_lengueta_kgf": 17.28,
+   "N_neto_kgf": 14.219999999999999,
+   "ok": {
+    "fleje": true,
+    "labio": true,
+    "tornillo": true,
+    "pie": true,
+    "brazo": true
+   }
+  },
+  {
+   "L": 350,
+   "h": 400,
+   "W": 28.8,
+   "N": 25.2,
+   "por_mensula": {
+    "W": 14.4,
+    "N": 12.6
+   },
+   "F_gancho_N": 123.60600000000001,
+   "sigma_fleje_MPa": 24.721200000000003,
+   "sigma_labio_MPa": 60.54171428571429,
+   "tau_tornillo_MPa": 2.1858339884240907,
+   "presion_pie_kgf_cm2": 0.8286579681644137,
+   "sigma_brazo_MPa": 8.91335857220119,
+   "friccion_lengueta_kgf": 17.28,
+   "N_neto_kgf": 7.919999999999998,
+   "ok": {
+    "fleje": true,
+    "labio": true,
+    "tornillo": true,
+    "pie": true,
+    "brazo": true
+   }
+  }
+ ]
+}
